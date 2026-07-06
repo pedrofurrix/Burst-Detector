@@ -26,14 +26,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ProcessorHeaders.h>
 
 
-class ProcessorPlugin : public GenericProcessor
+class BurstDetector : public GenericProcessor
 {
 public:
 	/** The class constructor, used to initialize any members. */
-	ProcessorPlugin();
+	BurstDetector();
 
 	/** The class destructor, used to deallocate memory */
-	~ProcessorPlugin();
+	~BurstDetector();
 
 	/** If the processor has a custom editor, this method must be defined to instantiate it. */
 	AudioProcessorEditor* createEditor() override;
@@ -45,7 +45,7 @@ public:
 		Allows the processor to handle variations in the channel configuration or any other parameter
 		passed through signal chain. The processor can use this function to modify channel objects that
 		will be passed to downstream plugins. */
-	void updateSettings() override;
+	// void updateSettings() override;
 
 	/** Defines the functionality of the processor.
 		The process method is called every time a new data buffer is available.
@@ -74,6 +74,43 @@ public:
 		Parameter objects*/
 	void loadCustomParametersFromXml(XmlElement* parentElement) override;
 
-};
 
-#endif
+private:
+
+    // functions
+    int getNumActiveElectrodes();
+    void updateSettings() override;
+    ;
+
+    // internals
+    StreamSettings<MeanSpikeRateSettings> settings;
+    std::map<uint16, int> currSample; // per-buffer - allows processing samples while handling events
+    std::map<uint16, double> spikeAmp; // updated once per buffer
+    std::map<uint16, float> currMean;
+    std::map<uint16, float*> wpBuffer;
+    std::map<uint16, double> decayPerSample; // updated once per buffer
+
+    const String OUTPUT_TOOLTIP = "Continuous channel to overwrite with the spike rate (meaned over time and selected electrodes)";
+    const String TIME_CONST_TOOLTIP = "Time for the influence of a single spike to decay to 36.8% (1/e) of its initial value (larger = smoother, smaller = faster reaction to changes)";
+	
+
+
+
+	// parameters
+	int eventDuration; // in milliseconds
+    int timeout; // milliseconds after an event onset when no more events are allowed.
+	int minElectrodes; // minimum number of electrodes that must fire within the time window to count as a burst
+	int maxISIStart; // maximum inter-spike interval (in milliseconds) between the first two spikes of a burst
+	int maxISIEnd; // maximum inter-spike interval (in milliseconds) between the last two spikes of a burst
+	int minDuration; // minimum duration of a burst (in milliseconds)
+	int minSpikes; // minimum number of spikes in a burst
+	
+	
+	float timeConstant; // time constant for the exponential decay of the mean spike rate
+	float outputGain; // gain for the output channel
+	EventChannel* ttlChannel; // local pointer to TTL output channel
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MeanSpikeRate);
+
+};
+endif

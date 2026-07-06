@@ -20,12 +20,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "ProcessorPluginEditor.h"
+#ifndef PROCESSORPLUGINEDITOR_H_DEFINED
+#define PROCESSORPLUGINEDITOR_H_DEFINED
 
-ProcessorPluginEditor::ProcessorPluginEditor(GenericProcessor* parentNode) 
-    : GenericEditor(parentNode)
+#include <EditorHeaders.h>
+
+class BurstDetectorEditor : public GenericEditor
 {
+public:
 
-    desiredWidth = 150;
+	/** Constructor */
+	BurstDetectorEditor(GenericProcessor* parentNode);
 
-}
+	/** Destructor */
+	~BurstDetectorEditor() { }
+
+private:
+
+	/** Generates an assertion if this class leaks */
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BurstDetectorEditor);
+};
+
+#endif // BurstDetectorEditor_H_DEFINED
