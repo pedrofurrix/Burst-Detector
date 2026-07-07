@@ -26,6 +26,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ProcessorHeaders.h>
 
 
+class BurstDetectorSettings
+{
+public:
+/** Constructor -- sets default values*/
+    BurstDetectorSettings();
+
+    /** Destructor*/
+    ~BurstDetectorSettings() {}
+
+    /** Converts parameters specified in ms to samples, and updates the corresponding member variables. */
+    void updateSampleRateDependentValues (
+	int eventDuration; // in milliseconds
+    int timeout; // milliseconds after an event onset when no more events are allowed.
+	int maxISIStart; // maximum inter-spike interval (in milliseconds) between the first two spikes of a burst
+	int maxISIEnd; // maximum inter-spike interval (in milliseconds) between the last two spikes of a burst
+	int minDuration; // minimum duration of a burst (in milliseconds)
+	);
+
+
+
+
+
+}
+
 class BurstDetector : public GenericProcessor
 {
 public:

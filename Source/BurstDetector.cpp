@@ -48,45 +48,85 @@ AudioProcessorEditor* BurstDetector::createEditor()
 void BurstDetector::registerParameters()
 {
     // Register parameters here, if any
-    addFloatParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
+    addIntParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
                     "event_duration", // parameter name
                     "TTL Duration", // display name
                     "TTL Event Duration", // parameter description
                     "ms", // unit
-                    100.0f, // default value
-                    0.0f, // minimum value
-                    2000.0f, // maximum value
-                    1.0f); // step size
+                    100, // default value
+                    0, // minimum value
+                    2000, // maximum value
+                    1); // step size
                     
-    addFloatParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
+    addIntParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
                     "timeout", // parameter name
                     "Timeout", // display name
                     "Timeout for event generation (0 = off)", // parameter description
                     "ms", // unit
-                    100.0f, // default value
-                    0.0f, // minimum value
-                    2000.0f, // maximum value
-                    1.0f); // step size
+                    100, // default value
+                    0, // minimum value
+                    2000, // maximum value
+                    1); // step size
 
-    addFloatParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
-            "minElectrodes", // parameter name
+    addIntParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
+            "min_electrodes", // parameter name
             "Minimum Electrodes", // display name
             "Minimum number of active electrodes required for event generation", // parameter description
             "", // unit
-            1.0f, // default value
-            1.0f, // minimum value
-            1000.0f, // maximum value
-            1.0f); // step size
+            1, // default value
+            1, // minimum value
+            1000, // maximum value
+            1); // step size
 
-    addFloatParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
-        "minElectrodes", // parameter name
-        "Minimum Electrodes", // display name
-        "Minimum number of active electrodes required for event generation", // parameter description
+    addIntParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
+        "max_isi_start", // parameter name
+        "Maximum ISI Start", // display name
+        "Maximum interspike interval for event generation", // parameter description
         "", // unit
-        1.0f, // default value
-        1.0f, // minimum value
-        1000.0f, // maximum value
-        1.0f); // step size
+        1, // default value
+        1, // minimum value
+        1000, // maximum value
+        1); // step size
+    
+    addIntParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
+        "max_isi_end", // parameter name
+        "Maximum ISI End", // display name
+        "Maximum interspike interval for event generation", // parameter description
+        "", // unit
+        1, // default value
+        1, // minimum value
+        1000, // maximum value
+        1); // step size
+
+    addIntParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
+        "min_duration", // parameter name
+        "Minimum Duration", // display name
+        "Minimum duration for event generation", // parameter description
+        "", // unit
+        1, // default value
+        1, // minimum value
+        1000, // maximum value
+        1); // step size
+    
+    addIntParameter (Parameter::PROCESSOR_SCOPE, // parameter scope
+        "min_spikes", // parameter name
+        "Minimum Spikes", // display name
+        "Minimum number of spikes required for event generation", // parameter description
+        "", // unit
+        1, // default value
+        1, // minimum value
+        1000, // maximum value
+        1); // step size
+
+    
+    // CHECK IF REQUIRED
+    addSelectedChannelsParameter (Parameter::STREAM_SCOPE, 
+        "Output", 
+        "Output", 
+        OUTPUT_TOOLTIP, 
+        1);
+
+
 }
 
 
@@ -154,7 +194,31 @@ void BurstDetector::parameterValueChanged(Parameter* param)
    {
       numActiveElectrodes = (int) param->getValue();
    }
-   else if 
+   else if (param->getName().equalsIgnoreCase ("min_duration"))
+   {
+      minDuration = (int) param->getValue();
+   }
+   else if (param->getName().equalsIgnoreCase ("max_isi_start"))
+   {
+      maxISIStart = (int) param->getValue();
+   }
+   else if (param->getName().equalsIgnoreCase ("max_isi_end"))
+   {
+      maxISIEnd = (int) param->getValue();
+   }
+   else if (param->getName().equalsIgnoreCase ("min_spikes"))
+   {
+      minSpikes = (int) param->getValue();
+   }
+   
+//    else if (param->getName().equalsIgnoreCase ("time_constant"))
+//    {
+//       timeConstant = param->getValue();
+//    }
+//    else if (param->getName().equalsIgnoreCase ("output_gain"))
+//    {
+//       outputGain = param->getValue();
+//    }
 
 
 }
