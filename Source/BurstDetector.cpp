@@ -44,87 +44,38 @@ AudioProcessorEditor* BurstDetector::createEditor()
 
 void BurstDetector::registerParameters()
 {
-    addIntParameter(Parameter::PROCESSOR_SCOPE,
-                    "event_duration",
-                    "TTL Duration",
-                    "Width of the generated TTL pulse",
-                    10,
-                    1,
-                    2000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "event_duration", "TTL Duration", "Width of the generated TTL pulse", 10, 1, 2000);
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE,
-                    "timeout",
-                    "Timeout",
-                    "Minimum time between TTL pulses",
-                    100,
-                    0,
-                    10000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "timeout", "Timeout", "Minimum time between TTL pulses", 100, 0, 10000);
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE,
-                    "min_electrodes",
-                    "Min Electrodes",
-                    "Minimum number of overlapping electrode bursts required for a network burst",
-                    3,
-                    1,
-                    1024);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "min_electrodes", "Min Electrodes", "Minimum number of overlapping electrode bursts required for a network burst", 3, 1, 1024);
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE,
-                    "max_isi_start",
-                    "Max ISI Start",
-                    "Maximum interval between the first two spikes of a burst",
-                    100,
-                    1,
-                    10000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_start", "Max ISI Start", "Maximum interval between the first two spikes of a burst", 100, 1, 10000);
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE,
-                    "max_isi_end",
-                    "Max ISI End",
-                    "Maximum interval allowed inside an active burst candidate",
-                    200,
-                    1,
-                    10000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_end", "Max ISI End", "Maximum interval allowed inside an active burst candidate", 200, 1, 10000);
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE,
-                    "min_duration",
-                    "Min Duration",
-                    "Minimum duration required before a burst is reported",
-                    20,
-                    0,
-                    10000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "min_duration", "Min Duration", "Minimum duration required before a burst is reported", 20, 0, 10000);
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE,
-                    "min_spikes",
-                    "Min Spikes",
-                    "Minimum number of spikes required before a burst is reported",
-                    3,
-                    2,
-                    10000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "min_spikes", "Min Spikes", "Minimum number of spikes required before a burst is reported", 3, 2, 10000);   
 
-    addTtlLineParameter(Parameter::STREAM_SCOPE,
-                        "single_burst_line",
-                        "Single Line",
-                        "TTL line used for single-electrode bursts",
-                        8,
-                        false,
-                        false,
-                        false);
+    addTtlLineParameter(Parameter::STREAM_SCOPE, "single_burst_line", "Single Line", "TTL line used for single-electrode bursts", 8, false, false, false);
 
-    addTtlLineParameter(Parameter::STREAM_SCOPE,
-                        "network_burst_line",
-                        "Network Line",
-                        "TTL line used for network bursts",
-                        8,
-                        false,
-                        false,
-                        false);
+    addTtlLineParameter(Parameter::STREAM_SCOPE, "network_burst_line", "Network Line", "TTL line used for network bursts", 8, false, false, false);
 }
 
 void BurstDetector::updateSettings()
 {
-    ttlChannels.clear();
+    // Rebuild processor state whenever the available data streams change.
 
+    // Remove previously created TTL and spike channels.
+    ttlChannels.clear();
+    spikeChannels.clear();
+
+    // Iterate over every input data stream.
     for (auto stream : getDataStreams())
     {
+        // Create one TTL event channel for this stream.
+        // This channel will be used to output burst-detection TTL pulses.
         EventChannel::Settings settings{
             EventChannel::Type::TTL,
             "Burst Detector output",
@@ -135,7 +86,21 @@ void BurstDetector::updateSettings()
 
         eventChannels.add(new EventChannel(settings));
         eventChannels.getLast()->addProcessor(this);
+
+        // Store the channel so it can later be retrieved using the stream ID.
         ttlChannels[stream->getStreamId()] = eventChannels.getLast();
+
+        // Register every spike channel belonging to this stream.
+        // Initialise newly discovered channels as non-active by default.
+        for (auto chan : stream->getSpikeChannels())
+        {
+            spikeChannels.add(chan);
+
+            String id = chan->getIdentifier();
+
+            if (spikeChannelActive.find(id) == spikeChannelActive.end())
+                spikeChannelActive[id] = false;   // or false if you really want disabled by default
+        }
     }
 }
 
@@ -184,6 +149,16 @@ void BurstDetector::parameterValueChanged(Parameter* param)
         networkBurstLine = static_cast<TtlLineParameter*>(param)->getSelectedLine();
 }
 
+bool BurstDetector::isActive(const SpikeChannel* chan) const
+{
+    auto it = spikeChannelActive.find(chan->getIdentifier());
+
+    if (it == spikeChannelActive.end())
+        return true;
+
+    return it->second;
+}
+
 void BurstDetector::handleTTLEvent(TTLEventPtr event)
 {
     ignoreUnused(event);
@@ -195,7 +170,9 @@ void BurstDetector::handleSpike(SpikePtr spike)
 
     if (spikeChannel == nullptr)
         return;
-
+    
+    if (!isActive(const_cast<SpikeChannel*>(spikeChannel)))
+    return;
     const ElectrodeKey electrode{
         spike->getStreamId(),
         spike->getProcessorId(),

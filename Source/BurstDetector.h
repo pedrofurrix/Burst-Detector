@@ -29,6 +29,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <vector>
 
+
+
+
+/**
+
+    Holds settings for each data stream
+
+*/
+class BurstDetectorSettings
+{
+    
+// Do not think this is required.
+
+public:
+    BurstDetectorSettings();
+    
+    ~BurstDetectorSettings();
+
+
+    float timeConstMs;
+    int outputChan;
+};
+
+
 /**
     Detects single-electrode and network bursts from upstream Spike events.
 
@@ -83,6 +107,10 @@ public:
 
     /** No extra custom state is loaded beyond Parameter objects. */
     void loadCustomParametersFromXml(XmlElement* parentElement) override;
+
+    bool isActive(const SpikeChannel* chan) const;
+    Array<SpikeChannel*> spikeChannels;
+    std::map<String, bool> spikeChannelActive;
 
 private:
     struct ElectrodeKey
@@ -151,6 +179,8 @@ private:
 
     /** Safely adds a TTL event at a sample offset in the currently processed block. */
     void addTtlEvent(uint16 streamId, int64 sampleNumber, uint8 line, bool state);
+    
+
 
     /** User-facing detector parameters. All times are in milliseconds. */
     int eventDurationMs = 10;
@@ -171,10 +201,12 @@ private:
     std::map<ElectrodeKey, ElectrodeState> electrodeStates;
     std::map<uint16, std::deque<DetectedBurst>> recentBursts;
 
-    /** Locally generated TTL event channel for each stream. */
+     /** Locally generated TTL event channel for each stream. */
     std::map<uint16, EventChannel*> ttlChannels;
     std::vector<PendingTtlOff> pendingTtlOffs;
 
+
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BurstDetector);
 };
 
