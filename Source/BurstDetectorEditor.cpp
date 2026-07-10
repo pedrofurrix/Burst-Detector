@@ -25,7 +25,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode) 
     : GenericEditor(parentNode)
 {
+    desiredWidth = 300;
 
-    desiredWidth = 150;
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "event_duration", 15, 35);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "timeout", 115, 35);
+
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_start", 15, 70);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_end", 115, 70);
+
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_duration", 15, 105);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_spikes", 115, 105);
+
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_electrodes", 15, 140);
+
+    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "single_burst_line", 15, 175);
+    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "network_burst_line", 115, 175);
 
 }
