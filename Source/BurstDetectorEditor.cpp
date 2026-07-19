@@ -34,6 +34,10 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     noInputChannelsLabel->setFont (Font (12.0f, Font::bold));
     noInputChannelsLabel->setBounds (10, 35, 190, 40);
     noInputChannelsLabel->setJustificationType (Justification::centred);
+    if (processor->spikeChannels > 0)
+        noInputChannelsLabel->setVisible (false);
+    else
+        noInputChannelsLabel->setVisible (true);
     addAndMakeVisible (noInputChannelsLabel);
 
     // spike channels
