@@ -35,6 +35,7 @@ class ElectrodeStateButton : public ElectrodeButton
 {
 public:
     /** Constructor */
+    // Calls the ElectrodeButton constructor with a null pointer for the SpikeChannel. Stores the identifier string for the channel.
     ElectrodeStateButton (SpikeChannel* chan) : ElectrodeButton (0)
     {
         identifier = chan->getIdentifier();
@@ -114,13 +115,13 @@ private:
     OwnedArray<ElectrodeStateButton> spikeChannelButtons;
 
     // constants
-    static const int BUTTON_WIDTH = 20;
+    static const int BUTTON_WIDTH = 30;
     static const int BUTTON_HEIGHT = 15;
 
     static const int WIDTH = 400;
-    static const int VIEWPORT_WIDTH = 80;
+    static const int VIEWPORT_WIDTH = 90;
     static const int VIEWPORT_HEIGHT = 50;
-    static const int BUTTONS_PER_ROW = 4; //CONTENT_WIDTH / BUTTON_WIDTH;
+    static const int BUTTONS_PER_ROW = 3; //CONTENT_WIDTH / BUTTON_WIDTH;
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BurstDetectorEditor);

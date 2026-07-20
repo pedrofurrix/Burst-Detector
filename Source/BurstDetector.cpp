@@ -159,6 +159,12 @@ bool BurstDetector::isActive(const SpikeChannel* chan) const
     return it->second;
 }
 
+void BurstDetector::setActive(const String& identifier, bool active)
+{
+    spikeChannelActive[identifier] = active;
+}
+
+
 void BurstDetector::handleTTLEvent(TTLEventPtr event)
 {
     ignoreUnused(event);

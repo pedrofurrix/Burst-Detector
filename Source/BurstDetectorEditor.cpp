@@ -30,14 +30,14 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     
     auto processor = static_cast<BurstDetector*> (getProcessor());
 
-    noInputChannelsLabel = new Label ("NoInputChannelsLabel", "No spike channels detected");
+    noInputChannelsLabel = new Label ("NoInputChannelsLabel", "NO CHANNELS");
     noInputChannelsLabel->setFont (Font (12.0f, Font::bold));
-    noInputChannelsLabel->setBounds (10, 35, 190, 40);
+    noInputChannelsLabel->setBounds (5, 35, VIEWPORT_WIDTH , VIEWPORT_HEIGHT);
     noInputChannelsLabel->setJustificationType (Justification::centred);
-    if (processor->spikeChannels > 0)
-        noInputChannelsLabel->setVisible (false);
-    else
-        noInputChannelsLabel->setVisible (true);
+    // if (processor->spikeChannels.size() > 0)
+    //     noInputChannelsLabel->setVisible (false);
+    // else
+    //     noInputChannelsLabel->setVisible (true);
     addAndMakeVisible (noInputChannelsLabel);
 
     // spike channels
@@ -50,48 +50,48 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     addAndMakeVisible (spikeChannelViewport);
 
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "event_duration", 10 + VIEWPORT_WIDTH + 10, 35);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "event_duration", 10 + VIEWPORT_WIDTH + 10, 25);
     ParameterEditor* durationEditor = getParameterEditor ("event_duration");
     durationEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     durationEditor->setSize (80, 30);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "timeout", 10 + VIEWPORT_WIDTH + 10+80+10, 35);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "timeout", 10 + VIEWPORT_WIDTH + 10+80+10, 25);
     ParameterEditor* timeoutEditor = getParameterEditor ("timeout");
     timeoutEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     timeoutEditor->setSize (80, 30);
 
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_start", 10 + VIEWPORT_WIDTH + 10, 70);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_start", 10 + VIEWPORT_WIDTH + 10, 55);
     ParameterEditor* maxIsiStartEditor = getParameterEditor ("max_isi_start");
     maxIsiStartEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     maxIsiStartEditor->setSize (80, 30);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_end", 10 + VIEWPORT_WIDTH + 10+80+10, 70);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_end", 10 + VIEWPORT_WIDTH + 10+80+10, 55);
     ParameterEditor* maxIsiEndEditor = getParameterEditor ("max_isi_end");
     maxIsiEndEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     maxIsiEndEditor->setSize (80, 30);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_duration", 10 + VIEWPORT_WIDTH + 10, 105);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_duration", 10 + VIEWPORT_WIDTH + 10, 85);
     ParameterEditor* minDurationEditor = getParameterEditor ("min_duration");
     minDurationEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     minDurationEditor->setSize (80, 30);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_spikes", 10 + VIEWPORT_WIDTH + 10+80+10, 105);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_spikes", 10 + VIEWPORT_WIDTH + 10+80+10, 85);
     ParameterEditor* minSpikesEditor = getParameterEditor ("min_spikes");
     minSpikesEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     minSpikesEditor->setSize (80, 30);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_electrodes", 10 + VIEWPORT_WIDTH + 10, 140);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_electrodes", 10 + VIEWPORT_WIDTH +10+80+10+80+10, 25);
     ParameterEditor* minElectrodesEditor = getParameterEditor ("min_electrodes");
     minElectrodesEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     minElectrodesEditor->setSize (80, 30);
 
-    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "single_burst_line", 10 + VIEWPORT_WIDTH + 10, 175);
+    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "single_burst_line", 10 + VIEWPORT_WIDTH +10+80+10+80+10, 55);
     ParameterEditor* singleBurstLineEditor = getParameterEditor ("single_burst_line");
     singleBurstLineEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     singleBurstLineEditor->setSize (80, 30);
 
-    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "network_burst_line", 10 + VIEWPORT_WIDTH + 10+80+10, 175);
+    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "network_burst_line", 10 + VIEWPORT_WIDTH +10+80+10+80+10, 85);
     ParameterEditor* networkBurstLineEditor = getParameterEditor ("network_burst_line");
     networkBurstLineEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     networkBurstLineEditor->setSize (80, 30);
@@ -106,6 +106,13 @@ BurstDetectorEditor::~BurstDetectorEditor()
 
 void BurstDetectorEditor::updateSettings()
 {
+    auto processor = static_cast<BurstDetector*>(getProcessor());
+
+    bool hasChannels = !processor->spikeChannels.isEmpty();
+
+    noInputChannelsLabel->setVisible(!hasChannels);
+    spikeChannelViewport->setVisible(hasChannels);
+
     layoutChannelButtons();
 }
 
@@ -128,9 +135,9 @@ void BurstDetectorEditor::buttonClicked (Button* button)
 
     auto electrodeButton = static_cast<ElectrodeStateButton*> (button);
 
-    bool isActive = electrodeButton->getToggleState();
+    bool isActive = electrodeButton->getToggleState(); // if the button is toggled on, the electrode is active, else
 
-    processor->spikeChannelActive[electrodeButton->getIdentifier()] = isActive;
+    processor->setActive(electrodeButton->getIdentifier(), isActive);
 }
 
 bool BurstDetectorEditor::getSpikeChannelEnabled (int index)

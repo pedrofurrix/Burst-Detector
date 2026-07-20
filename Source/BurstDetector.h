@@ -109,6 +109,9 @@ public:
     void loadCustomParametersFromXml(XmlElement* parentElement) override;
 
     bool isActive(const SpikeChannel* chan) const;
+
+    void setActive(const String& identifier, bool active);
+
     Array<SpikeChannel*> spikeChannels;
     std::map<String, bool> spikeChannelActive;
 
@@ -180,7 +183,6 @@ private:
     /** Safely adds a TTL event at a sample offset in the currently processed block. */
     void addTtlEvent(uint16 streamId, int64 sampleNumber, uint8 line, bool state);
     
-
 
     /** User-facing detector parameters. All times are in milliseconds. */
     int eventDurationMs = 10;
