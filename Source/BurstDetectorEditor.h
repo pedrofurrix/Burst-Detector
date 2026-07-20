@@ -115,7 +115,7 @@ private:
     OwnedArray<ElectrodeStateButton> spikeChannelButtons;
 
     // constants
-    static const int BUTTON_WIDTH = 30;
+    static const int BUTTON_WIDTH = 27;
     static const int BUTTON_HEIGHT = 15;
 
     static const int WIDTH = 400;

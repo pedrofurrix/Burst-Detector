@@ -30,29 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 
 
-
-
-/**
-
-    Holds settings for each data stream
-
-*/
-class BurstDetectorSettings
-{
-    
-// Do not think this is required.
-
-public:
-    BurstDetectorSettings();
-    
-    ~BurstDetectorSettings();
-
-
-    float timeConstMs;
-    int outputChan;
-};
-
-
 /**
     Detects single-electrode and network bursts from upstream Spike events.
 
@@ -112,6 +89,8 @@ public:
 
     void setActive(const String& identifier, bool active);
 
+    int getNumActiveElectrodes() const;
+
     Array<SpikeChannel*> spikeChannels;
     std::map<String, bool> spikeChannelActive;
 
@@ -131,6 +110,13 @@ private:
                 return processorId < other.processorId;
 
             return channelIndex < other.channelIndex;
+        }
+
+        bool operator==(const ElectrodeKey& other) const
+        {
+            return streamId == other.streamId
+                && processorId == other.processorId
+                && channelIndex == other.channelIndex;
         }
     };
 
@@ -169,8 +155,11 @@ private:
     /** Emits pending falling edges whose timestamps fall in the current block. */
     void emitPendingTtlOffs();
 
-    /** Adds a detected electrode burst and checks whether it creates a network burst. */
+    /** Adds (or refreshes) a detected electrode burst and checks whether it creates a network burst. */
     void addDetectedBurst(const DetectedBurst& burst, int64 triggerSample);
+
+    /** Returns the min-electrodes threshold clamped to the number of currently active electrodes. */
+    int getEffectiveMinElectrodes() const;
 
     /** Prunes old burst intervals so network overlap checks stay bounded. */
     void pruneOldBursts(uint16 streamId, int64 newestSample);
@@ -202,6 +191,10 @@ private:
     /** Per-electrode burst candidates and recent completed bursts. */
     std::map<ElectrodeKey, ElectrodeState> electrodeStates;
     std::map<uint16, std::deque<DetectedBurst>> recentBursts;
+
+    /** Reused across calls to addDetectedBurst() to avoid allocating a fresh
+        container on the audio thread every time a burst is reported. */
+    std::vector<std::pair<ElectrodeKey, DetectedBurst>> overlapScratch;
 
      /** Locally generated TTL event channel for each stream. */
     std::map<uint16, EventChannel*> ttlChannels;
