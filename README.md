@@ -19,7 +19,7 @@ This plugin will in the future be added via the Open Ephys GUI Plugin Installer.
 
 - Once spike channels (single electrodes, stereotrodes, or tetrodes) are available, corresponding toggle buttons will appear in the left panel. These can be enabled or disabled to include or exclude individual channels from burst detection.
 
-- Set relevant burst detection parameters (we recommend these are tuned empirically), define TTL output lines, and toggle single-channel burst detection as intended.
+- Set relevant burst detection parameters (**we recommend these are tuned to your experiment**), define TTL output lines, and toggle single-channel burst detection as intended.
 
 ### Parameters
 
