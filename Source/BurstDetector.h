@@ -20,121 +20,219 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSORPLUGIN_H_DEFINED
-#define PROCESSORPLUGIN_H_DEFINED
+/*
+Burst Detector Plugin was developed by:
+Pedro Félix Alves (pedrofalves@i3s.up.pt)
+Paulo Aguiar
+Neuroengineering and Computational Neuroscience Lab
+i3S - Institute for Research and Innovation in Health
+University of Porto, Portugal
+Contact email: pauloaguiar@i3s.up.pt
+*/
+
+
+#ifndef BURSTDETECTOR_H_DEFINED
+#define BURSTDETECTOR_H_DEFINED
 
 #include <ProcessorHeaders.h>
 
-
-class BurstDetectorSettings
-{
-public:
-/** Constructor -- sets default values*/
-    BurstDetectorSettings();
-
-    /** Destructor*/
-    ~BurstDetectorSettings() {}
-
-    /** Converts parameters specified in ms to samples, and updates the corresponding member variables. */
-    void updateSampleRateDependentValues (
-	int eventDuration; // in milliseconds
-    int timeout; // milliseconds after an event onset when no more events are allowed.
-	int maxISIStart; // maximum inter-spike interval (in milliseconds) between the first two spikes of a burst
-	int maxISIEnd; // maximum inter-spike interval (in milliseconds) between the last two spikes of a burst
-	int minDuration; // minimum duration of a burst (in milliseconds)
-	);
+#include <deque>
+#include <map>
+#include <vector>
 
 
 
 
+/**
+    Detects single-electrode and network bursts from upstream Spike events.
 
-}
+    The single-electrode detector follows the common max-interval burst rule:
+    a burst candidate starts when two consecutive spikes are closer than
+    max_isi_start, continues while consecutive spikes remain closer than
+    max_isi_end, and becomes a detected burst after it satisfies min_spikes
+    and min_duration.
 
+    Network bursts are detected by looking for temporal overlap between
+    detected single-electrode bursts on at least min_electrodes different
+    spike channels.
+*/
 class BurstDetector : public GenericProcessor
 {
 public:
-	/** The class constructor, used to initialize any members. */
-	BurstDetector();
+    /** Constructor */
+    BurstDetector();
 
-	/** The class destructor, used to deallocate memory */
-	~BurstDetector();
+    /** Destructor */
+    ~BurstDetector();
 
-	/** If the processor has a custom editor, this method must be defined to instantiate it. */
-	AudioProcessorEditor* createEditor() override;
+    /** Creates this processor's compact parameter editor. */
+    AudioProcessorEditor* createEditor() override;
 
-	/** All plugin parameter objects must be created inside this method */
+    /** Creates parameters before the editor asks for them. */
     void registerParameters() override;
 
-	/** Called every time the settings of an upstream plugin are changed.
-		Allows the processor to handle variations in the channel configuration or any other parameter
-		passed through signal chain. The processor can use this function to modify channel objects that
-		will be passed to downstream plugins. */
-	// void updateSettings() override;
+    /** Adds the TTL output event channel for each incoming data stream. */
+    void updateSettings() override;
 
-	/** Defines the functionality of the processor.
-		The process method is called every time a new data buffer is available.
-		Visualizer plugins typically use this method to send data to the canvas for display purposes */
-	void process(AudioBuffer<float>& buffer) override;
+    /** Resets all detection state when acquisition starts. */
+    bool startAcquisition() override;
 
-	/** Handles events received by the processor
-		Called automatically for each received event whenever checkForEvents() is called from
-		the plugin's process() method */
-	void handleTTLEvent(TTLEventPtr event) override;
+    /** Handles incoming Spike events and pending TTL pulse ends. */
+    void process(AudioBuffer<float>& buffer) override;
 
-	/** Handles spikes received by the processor
-		Called automatically for each received spike whenever checkForEvents(true) is called from
-		the plugin's process() method */
-	void handleSpike(SpikePtr spike) override;
+    /** Responds to parameter edits from the GUI. */
+    void parameterValueChanged(Parameter* param) override;
 
-	/** Handles broadcast messages sent during acquisition
-		Called automatically whenever a broadcast message is sent through the signal chain */
-    void handleBroadcastMessage (const String& message, const int64 messageTimeMilliseconds) override;
+    /** Incoming TTL events are not used by this detector. */
+    void handleTTLEvent(TTLEventPtr event) override;
 
-	/** Saving custom settings to XML. This method is not needed to save the state of
-		Parameter objects */
-	void saveCustomParametersToXml(XmlElement* parentElement) override;
+    /** Runs max-interval detection for each upstream spike. */
+    void handleSpike(SpikePtr spike) override;
 
-	/** Load custom settings from XML. This method is not needed to load the state of
-		Parameter objects*/
-	void loadCustomParametersFromXml(XmlElement* parentElement) override;
+    /** Handles broadcast messages sent during acquisition. */
+    void handleBroadcastMessage(const String& message, const int64 messageTimeMilliseconds) override;
 
+    /** No extra custom state is saved beyond Parameter objects. */
+    void saveCustomParametersToXml(XmlElement* parentElement) override;
+
+    /** No extra custom state is loaded beyond Parameter objects. */
+    void loadCustomParametersFromXml(XmlElement* parentElement) override;
+
+    bool isActive(const SpikeChannel* chan) const;
+
+    void setActive(const String& identifier, bool active);
+
+    int getNumActiveElectrodes() const;
+
+    Array<SpikeChannel*> spikeChannels;
+    std::map<String, bool> spikeChannelActive;
 
 private:
+    struct ElectrodeKey
+    {
+        uint16 streamId = 0;
+        uint16 processorId = 0;
+        uint16 channelIndex = 0;
 
-    // functions
-    int getNumActiveElectrodes();
-    void updateSettings() override;
-    ;
+        bool operator<(const ElectrodeKey& other) const
+        {
+            if (streamId != other.streamId)
+                return streamId < other.streamId;
 
-    // internals
-    StreamSettings<MeanSpikeRateSettings> settings;
-    std::map<uint16, int> currSample; // per-buffer - allows processing samples while handling events
-    std::map<uint16, double> spikeAmp; // updated once per buffer
-    std::map<uint16, float> currMean;
-    std::map<uint16, float*> wpBuffer;
-    std::map<uint16, double> decayPerSample; // updated once per buffer
+            if (processorId != other.processorId)
+                return processorId < other.processorId;
 
-    const String OUTPUT_TOOLTIP = "Continuous channel to overwrite with the spike rate (meaned over time and selected electrodes)";
-    const String TIME_CONST_TOOLTIP = "Time for the influence of a single spike to decay to 36.8% (1/e) of its initial value (larger = smoother, smaller = faster reaction to changes)";
-	
+            return channelIndex < other.channelIndex;
+        }
+
+        bool operator==(const ElectrodeKey& other) const
+        {
+            return streamId == other.streamId
+                && processorId == other.processorId
+                && channelIndex == other.channelIndex;
+        }
+    };
+
+    struct ElectrodeState
+    {
+        bool inCandidate = false;
+        bool emittedForCandidate = false;
+        int spikeCount = 0;
+        int64 firstSpikeSample = 0;
+        int64 lastSpikeSample = 0;
+    };
+
+    struct DetectedBurst
+    {
+        ElectrodeKey electrode;
+        int64 startSample = 0;
+        int64 endSample = 0;
+    };
+
+    struct PendingTtlOff
+    {
+        uint16 streamId = 0;
+        int64 sampleNumber = 0;
+        uint8 line = 0;
+    };
+
+    /** Converts a millisecond parameter to samples for a specific stream. */
+    int64 msToSamples(uint16 streamId, int milliseconds) const;
+
+    /** Returns the generated TTL channel for a stream, or nullptr if unavailable. */
+    EventChannel* getTtlChannel(uint16 streamId) const;
+
+    /** Emits a TTL pulse and schedules the matching falling edge. */
+    void triggerTtlPulse(uint16 streamId, int64 sampleNumber, uint8 line);
+
+    /** Emits pending falling edges whose timestamps fall in the current block. */
+    void emitPendingTtlOffs();
+
+    /** Adds (or refreshes) a detected electrode burst and checks whether it creates a network burst. */
+    void addDetectedBurst(const DetectedBurst& burst, int64 triggerSample);
+
+    /** Prunes old burst intervals so network overlap checks stay bounded. */
+    void pruneOldBursts(uint16 streamId, int64 newestSample);
+
+    /** Emits a single-electrode burst TTL and forwards the interval to the network detector. */
+    void emitSingleElectrodeBurst(const ElectrodeKey& electrode,
+                                  const ElectrodeState& state,
+                                  int64 triggerSample);
+
+    /** Safely adds a TTL event at a sample offset in the currently processed block. */
+    void addTtlEvent(uint16 streamId, int64 sampleNumber, uint8 line, bool state);
+    
+
+    /** User-facing detector parameters. All times are in milliseconds. */
+    int eventDurationMs = 10;
+    int timeoutMs = 200;
+    int minElectrodes = 3;
+    int maxIsiStartMs = 170;
+    int maxIsiEndMs = 300;
+    int minDurationMs = 10;
+    int minSpikes = 3;
+    bool singleBurstEnabled = false;
+    int singleBurstLine = -1;
+    int networkBurstLine = 1;
+
+    /** Last emitted sample per stream, used to enforce the refractory timeout. */
+    std::map<uint16, int64> lastSingleTtlSample;
+    std::map<uint16, int64> lastNetworkTtlSample;
+
+    /** True while a network burst is ongoing for a stream, so multiple
+        contributing single-electrode burst reports (including refreshes of
+        an already-reported burst's end sample) don't each re-fire the
+        network TTL - only the onset of a new episode does. */
+    std::map<uint16, bool> networkBurstActive;
+
+    /** Highest block-start sample number seen so far for each stream. Used
+        to detect a looping/restarted data source (sample numbers jumping
+        backwards), which would otherwise strand pending TTL "off" events
+        scheduled against the old, higher sample count. */
+    std::map<uint16, int64> lastObservedFirstSample;
+
+    /** Resets timing-dependent state for one stream after its sample
+        numbers have jumped backwards (see lastObservedFirstSample). Fires
+        any pending TTL offs for that stream immediately instead of leaving
+        them stranded, and clears debounce/candidate state so detection
+        starts cleanly for the new pass over the data. */
+    void resetStreamTimingState(uint16 streamId);
+
+    /** Per-electrode burst candidates and recent completed bursts. */
+    std::map<ElectrodeKey, ElectrodeState> electrodeStates;
+    std::map<uint16, std::deque<DetectedBurst>> recentBursts;
+
+    /** Reused across calls to addDetectedBurst() to avoid allocating a fresh
+        container on the audio thread every time a burst is reported. */
+    std::vector<std::pair<ElectrodeKey, DetectedBurst>> overlapScratch;
+
+     /** Locally generated TTL event channel for each stream. */
+    std::map<uint16, EventChannel*> ttlChannels;
+    std::vector<PendingTtlOff> pendingTtlOffs;
 
 
-
-	// parameters
-	int eventDuration; // in milliseconds
-    int timeout; // milliseconds after an event onset when no more events are allowed.
-	int minElectrodes; // minimum number of electrodes that must fire within the time window to count as a burst
-	int maxISIStart; // maximum inter-spike interval (in milliseconds) between the first two spikes of a burst
-	int maxISIEnd; // maximum inter-spike interval (in milliseconds) between the last two spikes of a burst
-	int minDuration; // minimum duration of a burst (in milliseconds)
-	int minSpikes; // minimum number of spikes in a burst
-	
-	
-	float timeConstant; // time constant for the exponential decay of the mean spike rate
-	float outputGain; // gain for the output channel
-	EventChannel* ttlChannel; // local pointer to TTL output channel
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MeanSpikeRate);
-
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BurstDetector);
 };
-endif
+
+#endif // BURSTDETECTOR_H_DEFINED
