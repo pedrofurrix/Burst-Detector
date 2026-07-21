@@ -55,7 +55,7 @@ AudioProcessorEditor* BurstDetector::createEditor()
 
 void BurstDetector::registerParameters()
 {
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "event_duration", "TTL Duration", "Width of the generated TTL pulse", 100, 1, 2000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "event_duration", "TTL Duration", "Width of the generated TTL pulse", 10, 1, 2000);
 
 
     addIntParameter(Parameter::PROCESSOR_SCOPE, "timeout", "Timeout", "Minimum time between TTL pulses", 200, 1, 10000);
@@ -64,10 +64,10 @@ void BurstDetector::registerParameters()
     addIntParameter(Parameter::PROCESSOR_SCOPE, "min_electrodes", "Min Electrodes", "Minimum number of overlapping electrode bursts required for a network burst", 3, 1, 1024);
 
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_start", "Max ISI Start", "Maximum interval between the first two spikes of a burst", 170, 1, 1000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_start", "Max ISI Start", "Maximum interval between the first two spikes of a burst", 30, 1, 1000);
 
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_end", "Max ISI End", "Maximum interval allowed inside an active burst candidate", 300, 1, 1000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_end", "Max ISI End", "Maximum interval allowed inside an active burst candidate", 50, 1, 1000);
 
 
     addIntParameter(Parameter::PROCESSOR_SCOPE, "min_duration", "Min Duration", "Minimum duration required before a burst is reported", 10, 0, 100);
@@ -242,6 +242,8 @@ void BurstDetector::handleTTLEvent(TTLEventPtr event)
 // then forwarded to the network-burst detector (addDetectedBurst()) if they satisfy the minimum criteria.
 void BurstDetector::handleSpike(SpikePtr spike)
 {
+
+
     const SpikeChannel* spikeChannel = spike->getChannelInfo();
 
     if (spikeChannel == nullptr)
@@ -256,9 +258,21 @@ void BurstDetector::handleSpike(SpikePtr spike)
         spike->getChannelIndex()
     };
 
+
     // Get the current state for this electrode, or create a new one if it doesn't exist yet.
     ElectrodeState& state = electrodeStates[electrode];
     const int64 spikeSample = spike->getSampleNumber();
+
+    LOGD(
+        "Spike detected: Stream: ", spike->getStreamId(),
+        "  Channel: ", spikeChannel->getName(),
+        "  Sample: ", spikeSample,
+        "  Spike count: ", state.spikeCount,
+        "  First spike: ", state.firstSpikeSample,
+        "  Last spike: ", state.lastSpikeSample,
+        "  In candidate: ", state.inCandidate,
+        "  Emitted: ", state.emittedForCandidate
+    );
 
     // If this is the first spike for this electrode, initialise the state and return.
     if (state.spikeCount == 0)
@@ -535,9 +549,9 @@ void BurstDetector::addDetectedBurst(const DetectedBurst& burst, int64 triggerSa
         return;
     }
 
-    // LOGD("Network burst detected on stream ", burst.electrode.streamId,
-    //      ": ", int(overlapScratch.size()), " electrodes overlapping (threshold ", minElectrodes,
-    //      "), TTL at sample ", triggerSample);
+    LOGD("Network burst detected on stream ", burst.electrode.streamId,
+         ": ", int(overlapScratch.size()), " electrodes overlapping (threshold ", minElectrodes,
+         "), TTL at sample ", triggerSample);
 
     networkBurstActive[burst.electrode.streamId] = true;
     triggerTtlPulse(burst.electrode.streamId, triggerSample, uint8(networkBurstLine));
@@ -559,9 +573,9 @@ void BurstDetector::emitSingleElectrodeBurst(const ElectrodeKey& electrode,
                                              const ElectrodeState& state,
                                              int64 triggerSample)
 {
-    // LOGD("Single-electrode burst detected: stream ", electrode.streamId,
-    //      ", processor ", electrode.processorId, ", channel ", electrode.channelIndex,
-    //      ", spikes ", state.spikeCount, ", sample ", triggerSample);
+    LOGD("Single-electrode burst detected: stream ", electrode.streamId,
+         ", processor ", electrode.processorId, ", channel ", electrode.channelIndex,
+         ", spikes ", state.spikeCount, ", sample ", triggerSample);
 
     // Single-electrode TTL output is off by default: it requires the
     // explicit "single_burst_enabled" toggle (see registerParameters()),
