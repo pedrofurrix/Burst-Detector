@@ -20,6 +20,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+Burst Detector Plugin was developed by:
+Pedro Félix Alves (pedrofalves@i3s.up.pt)
+Paulo Aguiar
+Neuroengineering and Computational Neuroscience Lab
+i3S - Institute for Research and Innovation in Health
+University of Porto, Portugal
+Contact email: pauloaguiar@i3s.up.pt
+*/
+
+
 #include "BurstDetectorEditor.h"
 #include "BurstDetector.h"
 
@@ -34,10 +45,7 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     noInputChannelsLabel->setFont (Font (12.0f, Font::bold));
     noInputChannelsLabel->setBounds (5, 35, VIEWPORT_WIDTH , VIEWPORT_HEIGHT);
     noInputChannelsLabel->setJustificationType (Justification::centred);
-    // if (processor->spikeChannels.size() > 0)
-    //     noInputChannelsLabel->setVisible (false);
-    // else
-    //     noInputChannelsLabel->setVisible (true);
+
     addAndMakeVisible (noInputChannelsLabel);
 
     // spike channels
@@ -53,48 +61,53 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "event_duration", 10 + VIEWPORT_WIDTH + 10, 25);
     ParameterEditor* durationEditor = getParameterEditor ("event_duration");
     durationEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    durationEditor->setSize (80, 30);
+    durationEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "timeout", 10 + VIEWPORT_WIDTH + 10+80+10, 25);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "timeout", 10 + VIEWPORT_WIDTH + 10+CONTENT_WIDTH+10, 25);
     ParameterEditor* timeoutEditor = getParameterEditor ("timeout");
     timeoutEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    timeoutEditor->setSize (80, 30);
+    timeoutEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_start", 10 + VIEWPORT_WIDTH + 10, 55);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_start", 10 + VIEWPORT_WIDTH + 10, 25 + CONTENT_HEIGHT);
     ParameterEditor* maxIsiStartEditor = getParameterEditor ("max_isi_start");
     maxIsiStartEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    maxIsiStartEditor->setSize (80, 30);
+    maxIsiStartEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_end", 10 + VIEWPORT_WIDTH + 10+80+10, 55);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_end", 10 + VIEWPORT_WIDTH + 10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT);
     ParameterEditor* maxIsiEndEditor = getParameterEditor ("max_isi_end");
     maxIsiEndEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    maxIsiEndEditor->setSize (80, 30);
+    maxIsiEndEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_duration", 10 + VIEWPORT_WIDTH + 10, 85);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_duration", 10 + VIEWPORT_WIDTH + 10, 25 + CONTENT_HEIGHT * 2);
     ParameterEditor* minDurationEditor = getParameterEditor ("min_duration");
     minDurationEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    minDurationEditor->setSize (80, 30);
+    minDurationEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_spikes", 10 + VIEWPORT_WIDTH + 10+80+10, 85);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_spikes", 10 + VIEWPORT_WIDTH + 10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT * 2);
     ParameterEditor* minSpikesEditor = getParameterEditor ("min_spikes");
     minSpikesEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    minSpikesEditor->setSize (80, 30);
+    minSpikesEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_electrodes", 10 + VIEWPORT_WIDTH +10+80+10+80+10, 25);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_electrodes", 10 + VIEWPORT_WIDTH +10+CONTENT_WIDTH+10+CONTENT_WIDTH+10, 25);
     ParameterEditor* minElectrodesEditor = getParameterEditor ("min_electrodes");
     minElectrodesEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    minElectrodesEditor->setSize (80, 30);
+    minElectrodesEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "single_burst_line", 10 + VIEWPORT_WIDTH +10+80+10+80+10, 55);
+    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "single_burst_line", 10 + VIEWPORT_WIDTH +10+CONTENT_WIDTH+10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT);
     ParameterEditor* singleBurstLineEditor = getParameterEditor ("single_burst_line");
     singleBurstLineEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    singleBurstLineEditor->setSize (80, 30);
+    singleBurstLineEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "network_burst_line", 10 + VIEWPORT_WIDTH +10+80+10+80+10, 85);
+    addToggleParameterEditor(Parameter::STREAM_SCOPE, "single_burst_enabled", 10, 25 + CONTENT_HEIGHT * 2);
+    ParameterEditor* singleBurstEnabledEditor = getParameterEditor ("single_burst_enabled");
+    singleBurstEnabledEditor->setLayout (ParameterEditor::Layout::nameOnTop);
+    singleBurstEnabledEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
+
+    addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "network_burst_line", 10 + VIEWPORT_WIDTH +10+CONTENT_WIDTH+10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT * 2);
     ParameterEditor* networkBurstLineEditor = getParameterEditor ("network_burst_line");
     networkBurstLineEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    networkBurstLineEditor->setSize (80, 30);
+    networkBurstLineEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
 }
 
@@ -140,25 +153,25 @@ void BurstDetectorEditor::buttonClicked (Button* button)
     processor->setActive(electrodeButton->getIdentifier(), isActive);
 }
 
-bool BurstDetectorEditor::getSpikeChannelEnabled (int index)
-{
-    if (index < 0 || index >= spikeChannelButtons.size())
-    {
-        jassertfalse;
-        return false;
-    }
-    return spikeChannelButtons[index]->getToggleState();
-}
+// bool BurstDetectorEditor::getSpikeChannelEnabled (int index)
+// {
+//     if (index < 0 || index >= spikeChannelButtons.size())
+//     {
+//         jassertfalse;
+//         return false;
+//     }
+//     return spikeChannelButtons[index]->getToggleState();
+// }
 
-void BurstDetectorEditor::setSpikeChannelEnabled (int index, bool enabled)
-{
-    if (index < 0 || index >= spikeChannelButtons.size())
-    {
-        jassertfalse;
-        return;
-    }
-    spikeChannelButtons[index]->setToggleState (enabled, sendNotificationSync);
-}
+// void BurstDetectorEditor::setSpikeChannelEnabled (int index, bool enabled)
+// {
+//     if (index < 0 || index >= spikeChannelButtons.size())
+//     {
+//         jassertfalse;
+//         return;
+//     }
+//     spikeChannelButtons[index]->setToggleState (enabled, sendNotificationSync);
+// }
 
 /* -------- private ----------- */
 

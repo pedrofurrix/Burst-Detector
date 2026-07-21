@@ -20,6 +20,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+Burst Detector Plugin was developed by:
+Pedro Félix Alves (pedrofalves@i3s.up.pt)
+Paulo Aguiar
+Neuroengineering and Computational Neuroscience Lab
+i3S - Institute for Research and Innovation in Health
+University of Porto, Portugal
+Contact email: pauloaguiar@i3s.up.pt
+*/
+
+
 #ifndef PROCESSORPLUGINEDITOR_H_DEFINED
 #define PROCESSORPLUGINEDITOR_H_DEFINED
 
@@ -28,9 +39,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 /** 
-
     Used to change the selection state for a particular electrode
 */
+
 class ElectrodeStateButton : public ElectrodeButton
 {
 public:
@@ -58,6 +69,7 @@ private:
     Scrollable viewport for electrode buttons
 
 */
+
 class ElectrodeViewport : public Viewport
 {
 public:
@@ -73,6 +85,12 @@ public:
     /** Override mouseWheelMove to prevent scrolling conflict with editor viewport */
     void mouseWheelMove (const MouseEvent& event, const MouseWheelDetails& wheel) override {}
 };
+
+/** 
+
+    Editor for the Burst Detector processor
+
+*/
 
 
 class BurstDetectorEditor : public GenericEditor, public Button::Listener
@@ -94,7 +112,7 @@ public:
     /** Returns the number of currently selected electrodes */
     int getNumActiveElectrodes();
 
-    /** Call back for electrode selection buttons*/
+    /** Call back for electrode selection buttons */
     void buttonClicked (Button* button) override;
 
     /** Returns true if a particular electrode is enabled */
@@ -118,11 +136,14 @@ private:
     static const int BUTTON_WIDTH = 27;
     static const int BUTTON_HEIGHT = 15;
 
-    static const int WIDTH = 400;
+    static const int WIDTH = 340;
     static const int VIEWPORT_WIDTH = 90;
     static const int VIEWPORT_HEIGHT = 50;
     static const int BUTTONS_PER_ROW = 3; //CONTENT_WIDTH / BUTTON_WIDTH;
 
+
+    static const int CONTENT_WIDTH=70;
+    static const int CONTENT_HEIGHT=30;
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BurstDetectorEditor);
 	

@@ -20,6 +20,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+Burst Detector Plugin was developed by:
+Pedro Félix Alves (pedrofalves@i3s.up.pt)
+Paulo Aguiar
+Neuroengineering and Computational Neuroscience Lab
+i3S - Institute for Research and Innovation in Health
+University of Porto, Portugal
+Contact email: pauloaguiar@i3s.up.pt
+*/
+
+
 #ifndef BURSTDETECTOR_H_DEFINED
 #define BURSTDETECTOR_H_DEFINED
 
@@ -28,6 +39,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <deque>
 #include <map>
 #include <vector>
+
+
 
 
 /**
@@ -158,9 +171,6 @@ private:
     /** Adds (or refreshes) a detected electrode burst and checks whether it creates a network burst. */
     void addDetectedBurst(const DetectedBurst& burst, int64 triggerSample);
 
-    /** Returns the min-electrodes threshold clamped to the number of currently active electrodes. */
-    int getEffectiveMinElectrodes() const;
-
     /** Prunes old burst intervals so network overlap checks stay bounded. */
     void pruneOldBursts(uint16 streamId, int64 newestSample);
 
@@ -175,18 +185,38 @@ private:
 
     /** User-facing detector parameters. All times are in milliseconds. */
     int eventDurationMs = 10;
-    int timeoutMs = 100;
+    int timeoutMs = 200;
     int minElectrodes = 3;
-    int maxIsiStartMs = 100;
-    int maxIsiEndMs = 200;
-    int minDurationMs = 20;
+    int maxIsiStartMs = 170;
+    int maxIsiEndMs = 300;
+    int minDurationMs = 10;
     int minSpikes = 3;
-    int singleBurstLine = 0;
+    bool singleBurstEnabled = false;
+    int singleBurstLine = -1;
     int networkBurstLine = 1;
 
     /** Last emitted sample per stream, used to enforce the refractory timeout. */
     std::map<uint16, int64> lastSingleTtlSample;
     std::map<uint16, int64> lastNetworkTtlSample;
+
+    /** True while a network burst is ongoing for a stream, so multiple
+        contributing single-electrode burst reports (including refreshes of
+        an already-reported burst's end sample) don't each re-fire the
+        network TTL - only the onset of a new episode does. */
+    std::map<uint16, bool> networkBurstActive;
+
+    /** Highest block-start sample number seen so far for each stream. Used
+        to detect a looping/restarted data source (sample numbers jumping
+        backwards), which would otherwise strand pending TTL "off" events
+        scheduled against the old, higher sample count. */
+    std::map<uint16, int64> lastObservedFirstSample;
+
+    /** Resets timing-dependent state for one stream after its sample
+        numbers have jumped backwards (see lastObservedFirstSample). Fires
+        any pending TTL offs for that stream immediately instead of leaving
+        them stranded, and clears debounce/candidate state so detection
+        starts cleanly for the new pass over the data. */
+    void resetStreamTimingState(uint16 streamId);
 
     /** Per-electrode burst candidates and recent completed bursts. */
     std::map<ElectrodeKey, ElectrodeState> electrodeStates;
