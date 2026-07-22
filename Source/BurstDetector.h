@@ -86,7 +86,7 @@ public:
     /** Incoming TTL events are not used by this detector. */
     void handleTTLEvent(TTLEventPtr event) override;
 
-    /** Runs max-interval detection for each upstream spike. */
+    /** Runs max-interval detection for each spike. */
     void handleSpike(SpikePtr spike) override;
 
     /** Handles broadcast messages sent during acquisition. */
@@ -200,22 +200,16 @@ private:
     std::map<uint16, int64> lastNetworkTtlSample;
 
     /** True while a network burst is ongoing for a stream, so multiple
-        contributing single-electrode burst reports (including refreshes of
-        an already-reported burst's end sample) don't each re-fire the
+        contributing single-electrode bursts don't each re-fire the
         network TTL - only the onset of a new episode does. */
     std::map<uint16, bool> networkBurstActive;
 
     /** Highest block-start sample number seen so far for each stream. Used
-        to detect a looping/restarted data source (sample numbers jumping
-        backwards), which would otherwise strand pending TTL "off" events
-        scheduled against the old, higher sample count. */
+        to detect a looping/restarted data source. */
     std::map<uint16, int64> lastObservedFirstSample;
 
     /** Resets timing-dependent state for one stream after its sample
-        numbers have jumped backwards (see lastObservedFirstSample). Fires
-        any pending TTL offs for that stream immediately instead of leaving
-        them stranded, and clears debounce/candidate state so detection
-        starts cleanly for the new pass over the data. */
+        numbers have jumped backwards. */
     void resetStreamTimingState(uint16 streamId);
 
     /** Per-electrode burst candidates and recent completed bursts. */

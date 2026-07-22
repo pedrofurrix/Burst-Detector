@@ -6,11 +6,13 @@ Neuronal bursts are periods of rapid, coordinated spiking activity that play fun
 
 The Burst Detector plugin detects both **single-electrode bursts** and **network bursts** directly from spike trains using the **MaxInterval (MI)** burst detection algorithm ([Legéndy & Salcman, 1985](https://pubmed.ncbi.nlm.nih.gov/3998798/); [Cotterill et al., 2016](https://journals.physiology.org/doi/full/10.1152/jn.00093.2016)). Upon burst detection, the plugin emits user-configurable TTL events, enabling integration with closed-loop stimulation systems and external hardware.
 
-This plugin aims to extend the applicability of the Open Ephys GUI to **in vitro electrophysiology**, providing an online burst detector suitable for multi-electrode array (MEA) recordings.
+This plugin aims to extend the applicability of the Open Ephys GUI to **in vitro electrophysiology**, providing an online burst detector suitable for microelectrode array (MEA) recordings.
 
 ## Installation
 
-This plugin will in the future be added via the Open Ephys GUI Plugin Installer. To access the Plugin Installer, press **ctrl-P** or **⌘P** from inside the GUI. Once the installer is loaded, browse to the "Burst Detector" plugin and click "Install."
+This plugin will in the future be added via the Open Ephys GUI Plugin Installer. To access the Plugin Installer, press **ctrl-P** or **⌘P** from inside the GUI. Once the installer is loaded, browse to the "Burst Detector" plugin and click "Install.".
+
+Currently, this functionality is unavailable and to install the plugin you must follow the instructions in [Building from source](#building-from-source).
 
 ## Usage
 
