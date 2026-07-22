@@ -8,6 +8,8 @@ The Burst Detector plugin detects both **single-electrode bursts** and **network
 
 This plugin aims to extend the applicability of the Open Ephys GUI to **in vitro electrophysiology**, providing an online burst detector suitable for microelectrode array (MEA) recordings.
 
+![open-ephys](Resources/open_ephys_burst_detector.png)
+
 ## Installation
 
 This plugin will in the future be added via the Open Ephys GUI Plugin Installer. To access the Plugin Installer, press **ctrl-P** or **⌘P** from inside the GUI. Once the installer is loaded, browse to the "Burst Detector" plugin and click "Install.".
