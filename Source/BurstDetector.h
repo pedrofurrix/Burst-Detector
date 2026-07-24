@@ -30,9 +30,21 @@ University of Porto, Portugal
 Contact email: pauloaguiar@i3s.up.pt
 */
 
+#pragma once
 
 #ifndef BURSTDETECTOR_H_DEFINED
 #define BURSTDETECTOR_H_DEFINED
+
+
+// Enable (1) or disable (0) debug logging
+#define BURST_DETECTOR_DEBUG 1
+
+#if BURST_DETECTOR_DEBUG
+    #define BD_LOG(...) LOGD(__VA_ARGS__)
+#else
+    #define BD_LOG(...)
+#endif
+
 
 #include <ProcessorHeaders.h>
 
@@ -51,6 +63,7 @@ Contact email: pauloaguiar@i3s.up.pt
     max_isi_start, continues while consecutive spikes remain closer than
     max_isi_end, and becomes a detected burst after it satisfies min_spikes
     and min_duration.
+    (For a further description of the method, please check https://doi.org/10.1152/jn.00093.2016)
 
     Network bursts are detected by looking for temporal overlap between
     detected single-electrode bursts on at least min_electrodes different
@@ -104,8 +117,8 @@ public:
 
     int getNumActiveElectrodes() const;
 
-    Array<SpikeChannel*> spikeChannels;
-    std::map<String, bool> spikeChannelActive;
+    Array<SpikeChannel*> spikeChannels; // stores pointers to all spike channels in the system
+    std::map<String, bool> spikeChannelActive; //stores the active state of each spike channel in the system
 
 private:
     struct ElectrodeKey
@@ -155,6 +168,11 @@ private:
         int64 sampleNumber = 0;
         uint8 line = 0;
     };
+    struct OverlapEntry
+    {
+        ElectrodeKey electrode;
+        DetectedBurst burst;
+    };
 
     /** Converts a millisecond parameter to samples for a specific stream. */
     int64 msToSamples(uint16 streamId, int milliseconds) const;
@@ -184,6 +202,8 @@ private:
     
 
     /** User-facing detector parameters. All times are in milliseconds. */
+    /** These are the original parameters used for IPSCs in the NeuroExplorer Manual (Nex Technologies 2014) and the burst detection methods comparison paper (https://doi.org/10.1152/jn.00093.2016). 
+    For primary hippocampal cultures, our lab has found these values to be exceedingly large, and propose lower initial values for more sensitive detection. */
     int eventDurationMs = 10;
     int timeoutMs = 200;
     int minElectrodes = 3;
@@ -218,7 +238,7 @@ private:
 
     /** Reused across calls to addDetectedBurst() to avoid allocating a fresh
         container on the audio thread every time a burst is reported. */
-    std::vector<std::pair<ElectrodeKey, DetectedBurst>> overlapScratch;
+    std::vector<OverlapEntry> overlapScratch;
 
      /** Locally generated TTL event channel for each stream. */
     std::map<uint16, EventChannel*> ttlChannels;

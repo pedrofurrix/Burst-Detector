@@ -48,7 +48,7 @@ void BurstDetector::registerParameters()
     addIntParameter(Parameter::PROCESSOR_SCOPE, "event_duration", "TTL Duration", "Width of the generated TTL pulse", 10, 1, 2000);
 
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "timeout", "Timeout", "Minimum time between TTL pulses", 200, 1, 10000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "timeout", "Timeout", "Minimum time between TTL pulses (burst detections)", 200, 1, 10000);
 
 
     addIntParameter(Parameter::PROCESSOR_SCOPE, "min_electrodes", "Min Electrodes", "Minimum number of overlapping electrode bursts required for a network burst", 3, 1, 1024);
@@ -204,7 +204,7 @@ bool BurstDetector::isActive(const SpikeChannel* chan) const
 void BurstDetector::setActive(const String& identifier, bool active)
 {
     spikeChannelActive[identifier] = active;
-    LOGD("Set ", identifier, " to ", (active ? "active" : "inactive"));
+    BD_LOG("Set ", identifier, " to ", (active ? "active" : "inactive"));
 }
 
 // Returns the number of currently active electrodes for burst detection
@@ -233,8 +233,7 @@ void BurstDetector::handleTTLEvent(TTLEventPtr event)
 void BurstDetector::handleSpike(SpikePtr spike)
 {
 
-
-    const SpikeChannel* spikeChannel = spike->getChannelInfo();
+    const SpikeChannel* spikeChannel = spike->getChannelInfo(); // get the spike channel for this spike
 
     if (spikeChannel == nullptr)
         return;
@@ -242,6 +241,8 @@ void BurstDetector::handleSpike(SpikePtr spike)
     // Ignore spikes from channels that are not currently active for burst detection.
     if (!isActive(const_cast<SpikeChannel*>(spikeChannel)))
     return;
+
+    // Create a unique key for this electrode based on its stream ID, processor ID, and channel index. Used to look up the electrode's state in the electrodeStates map.
     const ElectrodeKey electrode{
         spike->getStreamId(),
         spike->getProcessorId(),
@@ -253,7 +254,7 @@ void BurstDetector::handleSpike(SpikePtr spike)
     ElectrodeState& state = electrodeStates[electrode];
     const int64 spikeSample = spike->getSampleNumber();
 
-    LOGD(
+    BD_LOG(
         "Spike detected: Stream: ", spike->getStreamId(),
         "  Channel: ", spikeChannel->getName(),
         "  Sample: ", spikeSample,
@@ -295,11 +296,13 @@ void BurstDetector::handleSpike(SpikePtr spike)
 
         state.lastSpikeSample = spikeSample;
     }
+    // If the ISI is within the max-interval range, continue accumulating spikes for this candidate.
     else if (isiSamples >= 0 && isiSamples <= maxEndSamples)
     {
         state.spikeCount++;
         state.lastSpikeSample = spikeSample;
     }
+    // If the ISI is too long, the candidate has ended. Validate it and start a new candidate from the current spike.
     else
     {
         // The candidate has ended. If it was never reported, validate it one
@@ -309,16 +312,6 @@ void BurstDetector::handleSpike(SpikePtr spike)
             && (state.lastSpikeSample - state.firstSpikeSample) >= msToSamples(electrode.streamId, minDurationMs))
         {
             emitSingleElectrodeBurst(electrode, state, state.lastSpikeSample);
-        }
-        else if (state.emittedForCandidate)
-        {
-            // The burst already fired its TTL early (so closed-loop output
-            // wasn't delayed), but it kept accumulating spikes afterwards.
-            // Refresh the recorded interval so network-burst overlap checks
-            // are computed against the burst's true extent rather than the
-            // truncated interval captured at the moment of early emission.
-            // This is important for long bursts that overlap with other electrodes -> Network bursts.
-            addDetectedBurst({ electrode, state.firstSpikeSample, state.lastSpikeSample }, state.lastSpikeSample);
         }
 
         state.inCandidate = false;
@@ -338,6 +331,11 @@ void BurstDetector::handleSpike(SpikePtr spike)
     {
         state.emittedForCandidate = true;
         emitSingleElectrodeBurst(electrode, state, spikeSample);
+    }
+    else if (state.inCandidate && state.emittedForCandidate)
+    {
+        //Refresh the recorded interval so network-burst overlap checks are computed against the burst's true extent rather than the truncated interval captured at the moment of early emission.
+        addDetectedBurst({ electrode, state.firstSpikeSample, state.lastSpikeSample }, spikeSample);
     }
 }
 
@@ -393,7 +391,7 @@ void BurstDetector::triggerTtlPulse(uint16 streamId, int64 sampleNumber, uint8 l
 // starts cleanly for the new pass over the data.
 void BurstDetector::resetStreamTimingState(uint16 streamId)
 {
-    LOGD("Stream ", streamId, " sample number went backwards (source likely looped or restarted) "
+    BD_LOG("Stream ", streamId, " sample number went backwards (source likely looped or restarted) "
          "- resetting burst detector timing state for this stream");
 
     // Fire any pending TTL offs for this stream right now
@@ -474,62 +472,80 @@ void BurstDetector::emitPendingTtlOffs()
 void BurstDetector::addDetectedBurst(const DetectedBurst& burst, int64 triggerSample)
 {
     std::deque<DetectedBurst>& streamBursts = recentBursts[burst.electrode.streamId];
-    streamBursts.push_back(burst);
+    
+    // 1. Look to see if this electrode already has an unpruned, active burst entry
+    auto ongoingBurstIt = std::find_if(streamBursts.rbegin(), streamBursts.rend(),
+        [&](const DetectedBurst& b) { 
+            return b.electrode == burst.electrode && b.endSample >= burst.startSample; 
+        });
 
-    pruneOldBursts(burst.electrode.streamId, burst.endSample);
+    // We need a pointer to the true, updated burst data for the network calculations below
+    const DetectedBurst* activeBurstPtr = nullptr;
 
-    // Count one overlapping interval per electrode. The network burst starts
-    // where the shared overlap starts and ends where that overlap ends.
-    // Reuse a member scratch buffer instead of allocating a new associative
-    // container every time a burst is reported (this runs on the audio thread).
+    if (ongoingBurstIt != streamBursts.rend())
+    {
+        // Update in-place to keep memory usage tiny and O(1) stable
+        ongoingBurstIt->endSample = burst.endSample;
+        activeBurstPtr = &(*ongoingBurstIt);
+    }
+    else
+    {
+        // Push a genuinely new distinct burst sequence
+        streamBursts.push_back(burst);
+        activeBurstPtr = &(streamBursts.back());
+    }
+
+    // Now prune the history window safely
+    pruneOldBursts(burst.electrode.streamId, activeBurstPtr->endSample);
+    
+    // Clear our pre-allocated scratch buffer (zero audio-thread allocations)
     overlapScratch.clear();
 
+    // 2. Compute overlaps using the ground-truth updated burst
     for (const auto& candidate : streamBursts)
     {
-        const int64 overlapStart = jmax(burst.startSample, candidate.startSample);
-        const int64 overlapEnd = jmin(burst.endSample, candidate.endSample);
+        const int64 overlapStart = jmax(activeBurstPtr->startSample, candidate.startSample);
+        const int64 overlapEnd = jmin(activeBurstPtr->endSample, candidate.endSample);
 
         if (overlapStart > overlapEnd)
             continue;
 
-        // Keep only the most recent overlapping burst per electrode.
+        // Keep only the most recent overlapping burst per electrode
         auto existing = std::find_if(overlapScratch.begin(), overlapScratch.end(),
-            [&](const auto& entry) { return entry.first == candidate.electrode; });
+            [&](const auto& entry) { return entry.electrode == candidate.electrode; });
 
         if (existing == overlapScratch.end())
             overlapScratch.push_back({ candidate.electrode, candidate });
         else
-            existing->second = candidate;
+            existing->burst = candidate;
     }
 
+    // 3. Evaluate threshold metrics
     if (int(overlapScratch.size()) < minElectrodes)
     {
-        // Not enough electrodes currently overlapping - if a network burst
-        // was active, it has now ended, so re-arm for the next one.
         networkBurstActive[burst.electrode.streamId] = false;
         return;
     }
 
     if (networkBurstActive[burst.electrode.streamId])
     {
-        // Already inside an ongoing network burst episode (this report is
-        // either another contributing electrode or a refresh of an
-        // already-counted burst's end sample) - don't re-fire the TTL.
-        return;
+        return; // Already in a network burst episode, don't double-trigger TTL
     }
 
-    int64 networkStart = burst.startSample;
-    int64 networkEnd = burst.endSample;
+    // 4. Calculate definitive Network Boundaries using the true active burst
+    int64 networkStart = activeBurstPtr->startSample;
+    int64 networkEnd = activeBurstPtr->endSample;
 
     for (const auto& electrodeAndBurst : overlapScratch)
     {
-        networkStart = jmax(networkStart, electrodeAndBurst.second.startSample);
-        networkEnd = jmin(networkEnd, electrodeAndBurst.second.endSample);
+        networkStart = jmax(networkStart, electrodeAndBurst.burst.startSample);
+        networkEnd = jmin(networkEnd, electrodeAndBurst.burst.endSample);
     }
 
     if (networkStart > networkEnd)
         return;
 
+    // 5. Enforce debounce timeout checks
     const int64 timeoutSamples = msToSamples(burst.electrode.streamId, timeoutMs);
     const auto lastIter = lastNetworkTtlSample.find(burst.electrode.streamId);
 
@@ -539,9 +555,9 @@ void BurstDetector::addDetectedBurst(const DetectedBurst& burst, int64 triggerSa
         return;
     }
 
-    LOGD("Network burst detected on stream ", burst.electrode.streamId,
-         ": ", int(overlapScratch.size()), " electrodes overlapping (threshold ", minElectrodes,
-         "), TTL at sample ", triggerSample);
+    BD_LOG("Network burst detected on stream ", burst.electrode.streamId,
+          ": ", int(overlapScratch.size()), " electrodes overlapping (threshold ", minElectrodes,
+          "), TTL at sample ", triggerSample);
 
     networkBurstActive[burst.electrode.streamId] = true;
     triggerTtlPulse(burst.electrode.streamId, triggerSample, uint8(networkBurstLine));
@@ -554,6 +570,7 @@ void BurstDetector::pruneOldBursts(uint16 streamId, int64 newestSample)
     std::deque<DetectedBurst>& streamBursts = recentBursts[streamId];
     const int64 keepWindowSamples = msToSamples(streamId, jmax(maxIsiEndMs, minDurationMs) + timeoutMs + eventDurationMs);
 
+    // Remove bursts whose end sample is older than the newest sample minus the keep window.
     while (! streamBursts.empty() && streamBursts.front().endSample + keepWindowSamples < newestSample)
         streamBursts.pop_front();
 }
@@ -563,7 +580,7 @@ void BurstDetector::emitSingleElectrodeBurst(const ElectrodeKey& electrode,
                                              const ElectrodeState& state,
                                              int64 triggerSample)
 {
-    LOGD("Single-electrode burst detected: stream ", electrode.streamId,
+    BD_LOG("Single-electrode burst detected: stream ", electrode.streamId,
          ", processor ", electrode.processorId, ", channel ", electrode.channelIndex,
          ", spikes ", state.spikeCount, ", sample ", triggerSample);
 
