@@ -254,16 +254,16 @@ void BurstDetector::handleSpike(SpikePtr spike)
     ElectrodeState& state = electrodeStates[electrode];
     const int64 spikeSample = spike->getSampleNumber();
 
-    BD_LOG(
-        "Spike detected: Stream: ", spike->getStreamId(),
-        "  Channel: ", spikeChannel->getName(),
-        "  Sample: ", spikeSample,
-        "  Spike count: ", state.spikeCount,
-        "  First spike: ", state.firstSpikeSample,
-        "  Last spike: ", state.lastSpikeSample,
-        "  In candidate: ", state.inCandidate,
-        "  Emitted: ", state.emittedForCandidate
-    );
+    // BD_LOG(
+    //     "Spike detected: Stream: ", spike->getStreamId(),
+    //     "  Channel: ", spikeChannel->getName(),
+    //     "  Sample: ", spikeSample,
+    //     "  Spike count: ", state.spikeCount,
+    //     "  First spike: ", state.firstSpikeSample,
+    //     "  Last spike: ", state.lastSpikeSample,
+    //     "  In candidate: ", state.inCandidate,
+    //     "  Emitted: ", state.emittedForCandidate
+    // );
 
     // If this is the first spike for this electrode, initialise the state and return.
     if (state.spikeCount == 0)
