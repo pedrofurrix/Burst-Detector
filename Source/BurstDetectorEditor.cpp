@@ -57,24 +57,18 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     spikeChannelViewport->setViewedComponent (spikeChannelCanvas);
     addAndMakeVisible (spikeChannelViewport);
 
-
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "event_duration", 10 + VIEWPORT_WIDTH + 10, 25);
-    ParameterEditor* durationEditor = getParameterEditor ("event_duration");
-    durationEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    durationEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
-
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "timeout", 10 + VIEWPORT_WIDTH + 10+CONTENT_WIDTH+10, 25);
-    ParameterEditor* timeoutEditor = getParameterEditor ("timeout");
-    timeoutEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    timeoutEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
-
-
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_start", 10 + VIEWPORT_WIDTH + 10, 25 + CONTENT_HEIGHT);
+    addToggleParameterEditor(Parameter::STREAM_SCOPE, "single_burst_enabled", 10, 25 + CONTENT_HEIGHT * 2);
+    ParameterEditor* singleBurstEnabledEditor = getParameterEditor ("single_burst_enabled");
+    singleBurstEnabledEditor->setLayout (ParameterEditor::Layout::nameOnTop);
+    singleBurstEnabledEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
+    
+    //first column
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_start", 10 + VIEWPORT_WIDTH + 10,  25);
     ParameterEditor* maxIsiStartEditor = getParameterEditor ("max_isi_start");
     maxIsiStartEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     maxIsiStartEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_end", 10 + VIEWPORT_WIDTH + 10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_end", 10 + VIEWPORT_WIDTH + 10, 25 + CONTENT_HEIGHT);
     ParameterEditor* maxIsiEndEditor = getParameterEditor ("max_isi_end");
     maxIsiEndEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     maxIsiEndEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
@@ -84,25 +78,34 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     minDurationEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     minDurationEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_spikes", 10 + VIEWPORT_WIDTH + 10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT * 2);
+    //second column
+
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "timeout", 10 + VIEWPORT_WIDTH + 10+CONTENT_WIDTH+10, 25);
+    ParameterEditor* timeoutEditor = getParameterEditor ("timeout");
+    timeoutEditor->setLayout (ParameterEditor::Layout::nameOnTop);
+    timeoutEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
+
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_spikes", 10 + VIEWPORT_WIDTH + 10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT);
     ParameterEditor* minSpikesEditor = getParameterEditor ("min_spikes");
     minSpikesEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     minSpikesEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
-    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_electrodes", 10 + VIEWPORT_WIDTH +10+CONTENT_WIDTH+10+CONTENT_WIDTH+10, 25);
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "min_electrodes", 10 + VIEWPORT_WIDTH +10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT * 2);
     ParameterEditor* minElectrodesEditor = getParameterEditor ("min_electrodes");
     minElectrodesEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     minElectrodesEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
+
+    //third column
+
+    addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "event_duration",10 + VIEWPORT_WIDTH +10+CONTENT_WIDTH+10+CONTENT_WIDTH+10, 25);
+    ParameterEditor* durationEditor = getParameterEditor ("event_duration");
+    durationEditor->setLayout (ParameterEditor::Layout::nameOnTop);
+    durationEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
     addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "single_burst_line", 10 + VIEWPORT_WIDTH +10+CONTENT_WIDTH+10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT);
     ParameterEditor* singleBurstLineEditor = getParameterEditor ("single_burst_line");
     singleBurstLineEditor->setLayout (ParameterEditor::Layout::nameOnTop);
     singleBurstLineEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
-
-    addToggleParameterEditor(Parameter::STREAM_SCOPE, "single_burst_enabled", 10, 25 + CONTENT_HEIGHT * 2);
-    ParameterEditor* singleBurstEnabledEditor = getParameterEditor ("single_burst_enabled");
-    singleBurstEnabledEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    singleBurstEnabledEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
 
     addTtlLineParameterEditor(Parameter::STREAM_SCOPE, "network_burst_line", 10 + VIEWPORT_WIDTH +10+CONTENT_WIDTH+10+CONTENT_WIDTH+10, 25 + CONTENT_HEIGHT * 2);
     ParameterEditor* networkBurstLineEditor = getParameterEditor ("network_burst_line");
