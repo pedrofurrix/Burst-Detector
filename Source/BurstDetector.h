@@ -105,10 +105,10 @@ public:
     /** Handles broadcast messages sent during acquisition. */
     void handleBroadcastMessage(const String& message, const int64 messageTimeMilliseconds) override;
 
-    /** No extra custom state is saved beyond Parameter objects. */
+    /** Persists the active-electrode selection (not a Parameter object). */
     void saveCustomParametersToXml(XmlElement* parentElement) override;
 
-    /** No extra custom state is loaded beyond Parameter objects. */
+    /** Restores the active-electrode selection saved by saveCustomParametersToXml(). */
     void loadCustomParametersFromXml(XmlElement* parentElement) override;
 
     bool isActive(const SpikeChannel* chan) const;
@@ -199,21 +199,30 @@ private:
 
     /** Safely adds a TTL event at a sample offset in the currently processed block. */
     void addTtlEvent(uint16 streamId, int64 sampleNumber, uint8 line, bool state);
-    
 
-    /** User-facing detector parameters. All times are in milliseconds. */
-    /** These are the original parameters used for IPSCs in the NeuroExplorer Manual (Nex Technologies 2014) and the burst detection methods comparison paper (https://doi.org/10.1152/jn.00093.2016). 
-    For primary hippocampal cultures, our lab has found these values to be exceedingly large, and propose lower initial values for more sensitive detection. */
+    /** Per-stream TTL output settings. These parameters are STREAM_SCOPE, so they
+        are read from the owning stream rather than cached in a single member. */
+    bool isSingleBurstEnabled(uint16 streamId) const;
+    int singleBurstLineForStream(uint16 streamId) const;
+    int networkBurstLineForStream(uint16 streamId) const;
+
+
+    /** Cached copies of the PROCESSOR_SCOPE detector parameters. All times are in
+        milliseconds. These initial values must match the defaults registered in
+        registerParameters(), which are the single source of truth.
+
+        The literature values for IPSCs (NeuroExplorer Manual, Nex Technologies 2014;
+        burst detection methods comparison paper, https://doi.org/10.1152/jn.00093.2016)
+        are max_isi_start = 170 and max_isi_end = 300. For primary hippocampal cultures
+        our lab has found those exceedingly large, so the registered defaults use lower,
+        more sensitive values. */
     int eventDurationMs = 10;
     int timeoutMs = 200;
     int minElectrodes = 3;
-    int maxIsiStartMs = 170;
-    int maxIsiEndMs = 300;
+    int maxIsiStartMs = 30;
+    int maxIsiEndMs = 50;
     int minDurationMs = 10;
     int minSpikes = 3;
-    bool singleBurstEnabled = false;
-    int singleBurstLine = -1;
-    int networkBurstLine = 1;
 
     /** Last emitted sample per stream, used to enforce the refractory timeout. */
     std::map<uint16, int64> lastSingleTtlSample;

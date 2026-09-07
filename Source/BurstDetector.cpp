@@ -126,12 +126,23 @@ void BurstDetector::updateSettings()
 bool BurstDetector::startAcquisition()
 {
     electrodeStates.clear();
-    recentBursts.clear();
+
+    // Keep the per-stream deque entries that updateSettings() created, so the
+    // audio thread never inserts a new map node on the first burst - just drop
+    // their contents.
+    for (auto& streamBursts : recentBursts)
+        streamBursts.second.clear();
+
     pendingTtlOffs.clear();
     lastSingleTtlSample.clear();
     lastNetworkTtlSample.clear();
     networkBurstActive.clear();
     lastObservedFirstSample.clear();
+
+    // Pre-grow the overlap scratch buffer so the network-burst check never
+    // allocates on the audio thread.
+    overlapScratch.clear();
+    overlapScratch.reserve(256);
 
     return true;
 }
@@ -180,13 +191,11 @@ void BurstDetector::parameterValueChanged(Parameter* param)
         minDurationMs = int(param->getValue());
     else if (name == "min_spikes")
         minSpikes = jmax(2, int(param->getValue()));
-    else if (name == "single_burst_enabled")
-        singleBurstEnabled = bool(param->getValue());
-    else if (name == "single_burst_line")
-        singleBurstLine = static_cast<TtlLineParameter*>(param)->getSelectedLine();
-    else if (name == "network_burst_line")
-        networkBurstLine = static_cast<TtlLineParameter*>(param)->getSelectedLine();
 
+    // single_burst_enabled, single_burst_line and network_burst_line are
+    // STREAM_SCOPE: they are read per-stream in emitSingleElectrodeBurst() /
+    // addDetectedBurst() instead of being cached here, so multi-stream setups
+    // don't collapse to whichever stream was edited last.
 }
 
 // Returns whether a particular spike channel is currently active for burst detection.
@@ -344,14 +353,70 @@ void BurstDetector::handleBroadcastMessage(const String& msg, const int64 messag
     ignoreUnused(msg, messageTimeMilliseconds);
 }
 
+// Parameter objects are saved automatically by the base class. The
+// active-electrode selection lives in spikeChannelActive (keyed by the spike
+// channel identifier) and is not a Parameter, so it must be saved explicitly.
 void BurstDetector::saveCustomParametersToXml(XmlElement* parentElement)
 {
-    ignoreUnused(parentElement);
+    XmlElement* activeElectrodes = parentElement->createNewChildElement("ACTIVE_ELECTRODES");
+
+    for (const auto& entry : spikeChannelActive)
+    {
+        if (! entry.second)
+            continue;
+
+        XmlElement* electrode = activeElectrodes->createNewChildElement("ELECTRODE");
+        electrode->setAttribute("identifier", entry.first);
+    }
 }
 
+// Restores the active-electrode selection. Entries are merged into
+// spikeChannelActive; updateSettings() only inserts identifiers it hasn't seen
+// before, so the restored state survives regardless of call order.
 void BurstDetector::loadCustomParametersFromXml(XmlElement* parentElement)
 {
-    ignoreUnused(parentElement);
+    for (auto* activeElectrodes : parentElement->getChildWithTagNameIterator("ACTIVE_ELECTRODES"))
+    {
+        for (auto* electrode : activeElectrodes->getChildWithTagNameIterator("ELECTRODE"))
+        {
+            const String identifier = electrode->getStringAttribute("identifier");
+
+            if (identifier.isNotEmpty())
+                spikeChannelActive[identifier] = true;
+        }
+    }
+}
+
+// --- Per-stream TTL output settings (STREAM_SCOPE parameters) ----------------
+
+bool BurstDetector::isSingleBurstEnabled(uint16 streamId) const
+{
+    const DataStream* stream = getDataStream(streamId);
+
+    if (stream == nullptr || ! stream->hasParameter("single_burst_enabled"))
+        return false;
+
+    return bool(stream->getParameter("single_burst_enabled")->getValue());
+}
+
+int BurstDetector::singleBurstLineForStream(uint16 streamId) const
+{
+    const DataStream* stream = getDataStream(streamId);
+
+    if (stream == nullptr || ! stream->hasParameter("single_burst_line"))
+        return -1;
+
+    return static_cast<TtlLineParameter*>(stream->getParameter("single_burst_line"))->getSelectedLine();
+}
+
+int BurstDetector::networkBurstLineForStream(uint16 streamId) const
+{
+    const DataStream* stream = getDataStream(streamId);
+
+    if (stream == nullptr || ! stream->hasParameter("network_burst_line"))
+        return -1;
+
+    return static_cast<TtlLineParameter*>(stream->getParameter("network_burst_line"))->getSelectedLine();
 }
 
 int64 BurstDetector::msToSamples(uint16 streamId, int milliseconds) const
@@ -555,12 +620,17 @@ void BurstDetector::addDetectedBurst(const DetectedBurst& burst, int64 triggerSa
         return;
     }
 
+    const int networkLine = networkBurstLineForStream(burst.electrode.streamId);
+
+    if (networkLine < 0)
+        return; // no TTL line configured for this stream
+
     BD_LOG("Network burst detected on stream ", burst.electrode.streamId,
           ": ", int(overlapScratch.size()), " electrodes overlapping (threshold ", minElectrodes,
           "), TTL at sample ", triggerSample);
 
     networkBurstActive[burst.electrode.streamId] = true;
-    triggerTtlPulse(burst.electrode.streamId, triggerSample, uint8(networkBurstLine));
+    triggerTtlPulse(burst.electrode.streamId, triggerSample, uint8(networkLine));
     lastNetworkTtlSample[burst.electrode.streamId] = triggerSample;
 }
 
@@ -589,7 +659,9 @@ void BurstDetector::emitSingleElectrodeBurst(const ElectrodeKey& electrode,
     // since the TTL line selector itself always shows some line
     // pre-selected and can't reliably default to "off" on its own.
     // Detection and the network-burst feed below still run either way.
-    if (singleBurstEnabled && singleBurstLine >= 0)
+    const int singleLine = singleBurstLineForStream(electrode.streamId);
+
+    if (isSingleBurstEnabled(electrode.streamId) && singleLine >= 0)
     {
         const int64 timeoutSamples = msToSamples(electrode.streamId, timeoutMs);
         const auto lastIter = lastSingleTtlSample.find(electrode.streamId);
@@ -597,7 +669,7 @@ void BurstDetector::emitSingleElectrodeBurst(const ElectrodeKey& electrode,
         if (lastIter == lastSingleTtlSample.end()
             || triggerSample - lastIter->second >= timeoutSamples)
         {
-            triggerTtlPulse(electrode.streamId, triggerSample, uint8(singleBurstLine));
+            triggerTtlPulse(electrode.streamId, triggerSample, uint8(singleLine));
             lastSingleTtlSample[electrode.streamId] = triggerSample;
         }
     }

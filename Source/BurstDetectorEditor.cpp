@@ -224,6 +224,10 @@ void BurstDetectorEditor::layoutChannelButtons()
     spikeChannelButtons.clear();
     spikeChannelCanvas->removeAllChildren();
 
+    // No valid stream selected (e.g. nothing connected upstream yet).
+    if (stream == nullptr)
+        return;
+
     // Create one button per spike channel in this stream
     for (auto spikeChannel : stream->getSpikeChannels())
     {
