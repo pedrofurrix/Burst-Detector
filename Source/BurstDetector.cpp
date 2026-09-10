@@ -73,6 +73,15 @@ void BurstDetector::registerParameters()
 
 
     addTtlLineParameter(Parameter::STREAM_SCOPE, "network_burst_line", "Network Line", "TTL line used for network bursts", 8, false, true, false);
+
+    // Default the two outputs to different lines (single -> Line 1, network -> Line 2)
+    // so single-electrode and network pulses can be told apart on a scope without
+    // any manual setup.
+    if (auto* p = getStreamParameter("single_burst_line"))
+        p->currentValue = 0;
+
+    if (auto* p = getStreamParameter("network_burst_line"))
+        p->currentValue = 1;
 }
 
 
@@ -121,6 +130,12 @@ void BurstDetector::updateSettings()
                 spikeChannelActive[id] = false;
         }
     }
+
+    // The stream/channel layout may have changed - drop any in-progress
+    // candidates and recent-burst history so they can't leak into the new
+    // configuration. Runs on the message thread (acquisition is stopped).
+    resetDetectionState();
+    detectionResetPending.store(false, std::memory_order_relaxed);
 }
 
 bool BurstDetector::startAcquisition()
@@ -138,6 +153,7 @@ bool BurstDetector::startAcquisition()
     lastNetworkTtlSample.clear();
     networkBurstActive.clear();
     lastObservedFirstSample.clear();
+    detectionResetPending.store(false, std::memory_order_relaxed);
 
     // Pre-grow the overlap scratch buffer so the network-burst check never
     // allocates on the audio thread.
@@ -150,6 +166,11 @@ bool BurstDetector::startAcquisition()
 void BurstDetector::process(AudioBuffer<float>& buffer)
 {
     ignoreUnused(buffer);
+
+    // The electrode selection changed since the last block - clear stale burst
+    // state before processing new spikes.
+    if (detectionResetPending.exchange(false, std::memory_order_relaxed))
+        resetDetectionState();
 
     // If a stream's sample numbers have gone backwards since the last block
     // (e.g. a looping File Reader source restarting playback), any TTL offs
@@ -212,7 +233,17 @@ bool BurstDetector::isActive(const SpikeChannel* chan) const
 // Sets whether a particular spike channel is currently active for burst detection.
 void BurstDetector::setActive(const String& identifier, bool active)
 {
+    const auto it = spikeChannelActive.find(identifier);
+    const bool changed = (it == spikeChannelActive.end()) || (it->second != active);
+
     spikeChannelActive[identifier] = active;
+
+    // Ask process() to drop stale burst state on the audio thread so a burst
+    // detected on a now-deselected electrode can't still contribute to a
+    // network-burst overlap check.
+    if (changed)
+        detectionResetPending.store(true, std::memory_order_relaxed);
+
     BD_LOG("Set ", identifier, " to ", (active ? "active" : "inactive"));
 }
 
@@ -263,16 +294,16 @@ void BurstDetector::handleSpike(SpikePtr spike)
     ElectrodeState& state = electrodeStates[electrode];
     const int64 spikeSample = spike->getSampleNumber();
 
-    // BD_LOG(
-    //     "Spike detected: Stream: ", spike->getStreamId(),
-    //     "  Channel: ", spikeChannel->getName(),
-    //     "  Sample: ", spikeSample,
-    //     "  Spike count: ", state.spikeCount,
-    //     "  First spike: ", state.firstSpikeSample,
-    //     "  Last spike: ", state.lastSpikeSample,
-    //     "  In candidate: ", state.inCandidate,
-    //     "  Emitted: ", state.emittedForCandidate
-    // );
+    BD_LOG(
+        "Spike detected: Stream: ", spike->getStreamId(),
+        "  Channel: ", spikeChannel->getName(),
+        "  Sample: ", spikeSample,
+        "  Spike count: ", state.spikeCount,
+        "  First spike: ", state.firstSpikeSample,
+        "  Last spike: ", state.lastSpikeSample,
+        "  In candidate: ", state.inCandidate,
+        "  Emitted: ", state.emittedForCandidate
+    );
 
     // If this is the first spike for this electrode, initialise the state and return.
     if (state.spikeCount == 0)
@@ -439,7 +470,7 @@ EventChannel* BurstDetector::getTtlChannel(uint16 streamId) const
 
 void BurstDetector::triggerTtlPulse(uint16 streamId, int64 sampleNumber, uint8 line)
 {
-    addTtlEvent(streamId, sampleNumber, line, true);
+    addTtlEvent(streamId, sampleNumber, line, true);          
 
     const int64 offSample = sampleNumber + msToSamples(streamId, eventDurationMs);
 
@@ -489,6 +520,21 @@ void BurstDetector::resetStreamTimingState(uint16 streamId)
         else
             ++it;
     }
+}
+
+// Drops every in-progress burst candidate and all recent-burst history. Called
+// from updateSettings() (stream layout changed) and, via detectionResetPending,
+// from process() when the electrode selection changed. The per-stream
+// recentBursts keys are kept so the audio thread never has to insert one.
+void BurstDetector::resetDetectionState()
+{
+    electrodeStates.clear();
+
+    for (auto& streamBursts : recentBursts)
+        streamBursts.second.clear();
+
+    for (auto& active : networkBurstActive)
+        active.second = false;
 }
 
 // Safely emits any pending TTL offs that were scheduled by earlier blocks.
@@ -696,5 +742,9 @@ void BurstDetector::addTtlEvent(uint16 streamId, int64 sampleNumber, uint8 line,
     const int64 eventSample = jlimit<int64>(firstSample, lastSample, sampleNumber);
 
     TTLEventPtr event = TTLEvent::createTTLEvent(channel, eventSample, line, state);
+
+    BD_LOG("Adding TTL event on stream ", streamId,
+          ": sample ", sampleNumber, ", line ", line, ", state ", state);
+
     addEvent(event, sampleOffset);
 }

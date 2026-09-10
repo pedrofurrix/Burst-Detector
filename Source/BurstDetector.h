@@ -48,6 +48,7 @@ Contact email: pauloaguiar@i3s.up.pt
 
 #include <ProcessorHeaders.h>
 
+#include <atomic>
 #include <deque>
 #include <map>
 #include <vector>
@@ -240,6 +241,17 @@ private:
     /** Resets timing-dependent state for one stream after its sample
         numbers have jumped backwards. */
     void resetStreamTimingState(uint16 streamId);
+
+    /** Drops all in-progress burst candidates and recent-burst history so stale
+        detections can't survive a change to the electrode selection or the stream
+        layout. Keeps the per-stream recentBursts keys, so it is safe to call from
+        the audio thread. */
+    void resetDetectionState();
+
+    /** Set by setActive() (message thread) when the electrode selection changes;
+        consumed by process() (audio thread) to run resetDetectionState() without
+        racing the detection code. */
+    std::atomic<bool> detectionResetPending { false };
 
     /** Per-electrode burst candidates and recent completed bursts. */
     std::map<ElectrodeKey, ElectrodeState> electrodeStates;

@@ -4,7 +4,7 @@
 
 Neuronal bursts are periods of rapid, coordinated spiking activity that play fundamental roles in a variety of physiological processes, including information processing, synaptic plasticity, and network communication. In vitro, burst dynamics are widely used to characterize the functional state and development of neuronal cultures, assess pharmacological interventions, and investigate mechanisms underlying physiological and pathological activity. Real-time burst detection is therefore an important component of closed-loop electrophysiology experiments.
 
-The Burst Detector plugin detects both **single-electrode bursts** and **network bursts** directly from spike trains using the **MaxInterval (MI)** burst detection algorithm ([Legéndy & Salcman, 1985](https://pubmed.ncbi.nlm.nih.gov/3998798/); [Cotterill et al., 2016](https://journals.physiology.org/doi/full/10.1152/jn.00093.2016)). Upon burst detection, the plugin emits user-configurable TTL events, enabling integration with closed-loop stimulation systems and external hardware.
+The Burst Detector plugin detects both **single-electrode bursts** and **network bursts** directly from spike trains using the **MaxInterval (MI)** burst detection algorithm ([Legéndy & Salcman, 1985](https://doi.org/10.1152/jn.1985.53.4.926); [Cotterill et al., 2016](https://doi.org/10.1152/jn.00093.2016)). Upon burst detection, the plugin emits user-configurable TTL events, enabling integration with closed-loop stimulation systems and external hardware.
 
 This plugin aims to extend the applicability of the Open Ephys GUI to **in vitro electrophysiology**, providing an online burst detector suitable for microelectrode array (MEA) recordings.
 
