@@ -76,9 +76,7 @@ void BurstDetector::registerParameters()
 
     // Default the two outputs to different lines (single -> Line 1, network -> Line 2)
     // so single-electrode and network pulses can be told apart on a scope without
-    // any manual setup. addTtlLineParameter() has no default-line argument, so set
-    // it on the STREAM_SCOPE templates here; every per-stream copy inherits it, and
-    // configs loaded from XML keep their saved value.
+    // any manual setup.
     if (auto* p = getStreamParameter("single_burst_line"))
         p->currentValue = 0;
 
@@ -296,16 +294,16 @@ void BurstDetector::handleSpike(SpikePtr spike)
     ElectrodeState& state = electrodeStates[electrode];
     const int64 spikeSample = spike->getSampleNumber();
 
-    // BD_LOG(
-    //     "Spike detected: Stream: ", spike->getStreamId(),
-    //     "  Channel: ", spikeChannel->getName(),
-    //     "  Sample: ", spikeSample,
-    //     "  Spike count: ", state.spikeCount,
-    //     "  First spike: ", state.firstSpikeSample,
-    //     "  Last spike: ", state.lastSpikeSample,
-    //     "  In candidate: ", state.inCandidate,
-    //     "  Emitted: ", state.emittedForCandidate
-    // );
+    BD_LOG(
+        "Spike detected: Stream: ", spike->getStreamId(),
+        "  Channel: ", spikeChannel->getName(),
+        "  Sample: ", spikeSample,
+        "  Spike count: ", state.spikeCount,
+        "  First spike: ", state.firstSpikeSample,
+        "  Last spike: ", state.lastSpikeSample,
+        "  In candidate: ", state.inCandidate,
+        "  Emitted: ", state.emittedForCandidate
+    );
 
     // If this is the first spike for this electrode, initialise the state and return.
     if (state.spikeCount == 0)
@@ -472,7 +470,7 @@ EventChannel* BurstDetector::getTtlChannel(uint16 streamId) const
 
 void BurstDetector::triggerTtlPulse(uint16 streamId, int64 sampleNumber, uint8 line)
 {
-    addTtlEvent(streamId, sampleNumber, line, true);
+    addTtlEvent(streamId, sampleNumber, line, true);          
 
     const int64 offSample = sampleNumber + msToSamples(streamId, eventDurationMs);
 
@@ -744,5 +742,9 @@ void BurstDetector::addTtlEvent(uint16 streamId, int64 sampleNumber, uint8 line,
     const int64 eventSample = jlimit<int64>(firstSample, lastSample, sampleNumber);
 
     TTLEventPtr event = TTLEvent::createTTLEvent(channel, eventSample, line, state);
+
+    BD_LOG("Adding TTL event on stream ", streamId,
+          ": sample ", sampleNumber, ", line ", line, ", state ", state);
+
     addEvent(event, sampleOffset);
 }
