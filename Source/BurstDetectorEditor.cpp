@@ -207,7 +207,7 @@ ElectrodeStateButton* BurstDetectorEditor::makeNewChannelButton (SpikeChannel* c
             break;
     }
 
-    button->setButtonText (prefix + String (chan->getLocalIndex()));
+    button->setButtonText (prefix + String (chan->getLocalIndex() + 1));
     button->setTooltip (chan->getName());
 
     return button;

@@ -10,12 +10,6 @@ This plugin aims to extend the applicability of the Open Ephys GUI to **in vitro
 
 ![open-ephys](Resources/open_ephys_burst_detector.png)
 
-## Installation
-
-This plugin will in the future be added via the Open Ephys GUI Plugin Installer. To access the Plugin Installer, press **ctrl-P** or **⌘P** from inside the GUI. Once the installer is loaded, browse to the "Burst Detector" plugin and click "Install.".
-
-Currently, this functionality is unavailable and to install the plugin you must follow the instructions in [Building from source](#building-from-source).
-
 ## Usage
 
 
@@ -27,24 +21,34 @@ Currently, this functionality is unavailable and to install the plugin you must 
 
 ### Parameters
 
-* `TTL_DURATION` (ms) controls the duration of the TTL events triggered upon burst detection (default = 10 ms).
+1. `MAX_ISI_START` (ms) controls the maximum **inter-spike interval (ISI)** allowed between two consecutive spikes required to initiate a burst candidate (default = 30 ms).
 
-* `MAX_ISI_START` (ms) controls the maximum **inter-spike interval (ISI)** allowed between two consecutive spikes required to initiate a burst candidate (default = 30 ms).
+2. `MAX_ISI_END` (ms) controls the maximum **inter-spike interval (ISI)** allowed between consecutive spikes once a burst has been initiated (default = 50 ms).
 
-* `MAX_ISI_END` (ms) controls the maximum **inter-spike interval (ISI)** allowed between consecutive spikes once a burst has been initiated (default = 50 ms).
+3. `MIN_DURATION` (ms) controls the minimum duration of a burst (default = 10 ms).
 
-* `MIN_DURATION` (ms) controls the minimum duration of a burst (default = 10 ms).
+4. `TIMEOUT` (ms) specifies the refractory period following a detected burst during which no additional burst events are emitted (default = 200 ms).
 
-* `TIMEOUT` (ms) specifies the refractory period following a detected burst during which no additional burst events are emitted (default = 200 ms).
+5. `MIN_SPIKES` specifies the minimum number of spikes that may be considered to consist of a burst.
 
-* `MIN_ELECTRODES` specifies the minimum number of simultaneously bursting electrodes required to classify an event as a **network burst** (default = 3).
+6. `MIN_ELECTRODES` specifies the minimum number of simultaneously bursting electrodes required to classify an event as a **network burst** (default = 3).
 
-* `SINGLE_LINE` controls the TTL Line of the single-channel burst triggers (default = 1).
+7. `TTL_DURATION` (ms) controls the duration of the TTL events triggered upon burst detection (default = 10 ms).
 
-* `NETWORK_LINE` controls the TTL line of the network burst trigger (default = 1).
+8. `SINGLE_LINE` controls the TTL Line of the single-channel burst triggers (default = 1).
 
-* `SINGLE_TTL` (bool) controls whether to send TTL events for single-channel bursts (default = False).
+9. `NETWORK_LINE` controls the TTL line of the network burst trigger (default = 1).
 
+10. `SINGLE_TTL` (bool) controls whether to send TTL events for single-channel bursts (default = False).
+
+
+![open-ephys](Resources/plugin_schematic.png)
+
+## Installation
+
+This plugin will in the future be added via the Open Ephys GUI Plugin Installer. To access the Plugin Installer, press **ctrl-P** or **⌘P** from inside the GUI. Once the installer is loaded, browse to the "Burst Detector" plugin and click "Install.".
+
+Currently, this functionality is unavailable and to install the plugin you must follow the instructions in [Building from source](#building-from-source).
 
 ## Building from source
 
