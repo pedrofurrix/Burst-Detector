@@ -45,22 +45,25 @@ AudioProcessorEditor* BurstDetector::createEditor()
 
 void BurstDetector::registerParameters()
 {
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "event_duration", "TTL Duration", "Width of the generated TTL pulse", 10, 1, 2000);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "event_duration", "TTL Duration", "Width [ms] of the generated TTL pulse", 10, 1, 2000);
 
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "timeout", "Timeout", "Minimum time between TTL pulses (burst detections)", 200, 1, 10000);
+
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "timeout", "Timeout", "Minimum time [ms] between TTL pulses (burst detections)", 200, 1, 10000);
 
 
     addIntParameter(Parameter::PROCESSOR_SCOPE, "min_electrodes", "Min Electrodes", "Minimum number of overlapping electrode bursts required for a network burst", 3, 1, 1024);
 
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_start", "Max ISI Start", "Maximum interval between the first two spikes of a burst", 30, 1, 1000);
+
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_start", "Max ISI Start", "Maximum interval [ms] between the first two spikes of a burst", 30, 1, 1000);
 
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_end", "Max ISI End", "Maximum interval allowed inside an active burst candidate", 50, 1, 1000);
+
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "max_isi_end", "Max ISI End", "Maximum interval [ms] allowed inside an active burst candidate", 50, 1, 1000);
 
 
-    addIntParameter(Parameter::PROCESSOR_SCOPE, "min_duration", "Min Duration", "Minimum duration required before a burst is reported", 10, 0, 100);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "min_duration", "Min Duration", "Minimum duration [ms] required before a burst is reported", 10, 0, 100);
 
 
     addIntParameter(Parameter::PROCESSOR_SCOPE, "min_spikes", "Min Spikes", "Minimum number of spikes required before a burst is reported", 3, 2, 50);  
