@@ -57,11 +57,21 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     spikeChannelViewport->setViewedComponent (spikeChannelCanvas);
     addAndMakeVisible (spikeChannelViewport);
 
-    addToggleParameterEditor(Parameter::STREAM_SCOPE, "single_burst_enabled", 10, 25 + CONTENT_HEIGHT * 2);
-    ParameterEditor* singleBurstEnabledEditor = getParameterEditor ("single_burst_enabled");
-    singleBurstEnabledEditor->setLayout (ParameterEditor::Layout::nameOnTop);
-    singleBurstEnabledEditor->setSize (CONTENT_WIDTH, CONTENT_HEIGHT);
-    
+    // Multi-select popup for choosing which active electrodes' single-electrode
+    // bursts drive the "Single Line" TTL (replaces a blanket per-stream toggle).
+    // component->setBounds(x, y, width, height);
+    singleBurstMonitorLabel = new Label ("SingleBurstMonitorLabel", "Single Burst");
+    singleBurstMonitorLabel->setFont (Font (11.0f));
+    singleBurstMonitorLabel->setJustificationType (Justification::centred);
+    singleBurstMonitorLabel->setBounds (10, 25 + CONTENT_HEIGHT * 2, CONTENT_WIDTH, 12);
+    addAndMakeVisible (singleBurstMonitorLabel);
+
+    singleBurstMonitorButton = new TextButton ("SingleBurstMonitorButton");
+    singleBurstMonitorButton->setButtonText ("None");
+    singleBurstMonitorButton->setBounds (10, 25 + CONTENT_HEIGHT * 2 + 12, CONTENT_WIDTH, CONTENT_HEIGHT - 12);
+    singleBurstMonitorButton->onClick = [this]() { showSingleBurstMonitorMenu(); };
+    addAndMakeVisible (singleBurstMonitorButton);
+
     //first column
     addBoundedValueParameterEditor(Parameter::PROCESSOR_SCOPE, "max_isi_start", 10 + VIEWPORT_WIDTH + 10,  25);
     ParameterEditor* maxIsiStartEditor = getParameterEditor ("max_isi_start");
@@ -130,6 +140,7 @@ void BurstDetectorEditor::updateSettings()
     spikeChannelViewport->setVisible(hasChannels);
 
     layoutChannelButtons();
+    updateSingleBurstMonitorButtonText();
 }
 
 int BurstDetectorEditor::getNumActiveElectrodes()
@@ -154,6 +165,10 @@ void BurstDetectorEditor::buttonClicked (Button* button)
     bool isActive = electrodeButton->getToggleState(); // if the button is toggled on, the electrode is active, else
 
     processor->setActive(electrodeButton->getIdentifier(), isActive);
+
+    // A deactivated electrode drops out of the single-burst monitor list too
+    // (it can no longer be selected there), so refresh the button's count.
+    updateSingleBurstMonitorButtonText();
 }
 
 // bool BurstDetectorEditor::getSpikeChannelEnabled (int index)
@@ -178,6 +193,23 @@ void BurstDetectorEditor::buttonClicked (Button* button)
 
 /* -------- private ----------- */
 
+namespace
+{
+    /** Short channel-type prefix shared by the electrode toggle buttons and the
+        single-burst monitor popup ("SE"/"ST"/"TT" for single/stereotrode/tetrode,
+        "IV" for anything else). */
+    String electrodePrefix (SpikeChannel::Type type)
+    {
+        switch (type)
+        {
+            case SpikeChannel::SINGLE:      return "SE";
+            case SpikeChannel::STEREOTRODE: return "ST";
+            case SpikeChannel::TETRODE:     return "TT";
+            default:                        return "IV";
+        }
+    }
+}
+
 ElectrodeStateButton* BurstDetectorEditor::makeNewChannelButton (SpikeChannel* chan)
 {
     auto processor = static_cast<BurstDetector*> (getProcessor());
@@ -187,27 +219,7 @@ ElectrodeStateButton* BurstDetectorEditor::makeNewChannelButton (SpikeChannel* c
     auto button = new ElectrodeStateButton (chan);
     button->setToggleState (isActive, dontSendNotification);
 
-    String prefix;
-    switch (chan->getChannelType())
-    {
-        case SpikeChannel::SINGLE:
-            prefix = "SE";
-            break;
-
-        case SpikeChannel::STEREOTRODE:
-            prefix = "ST";
-            break;
-
-        case SpikeChannel::TETRODE:
-            prefix = "TT";
-            break;
-
-        default:
-            prefix = "IV";
-            break;
-    }
-
-    button->setButtonText (prefix + String (chan->getLocalIndex()));
+    button->setButtonText (electrodePrefix (chan->getChannelType()) + String (chan->getLocalIndex() + 1));
     button->setTooltip (chan->getName());
 
     return button;
@@ -261,4 +273,85 @@ void BurstDetectorEditor::layoutChannelButtons()
             BUTTON_WIDTH,
             BUTTON_HEIGHT);
     }
+}
+
+// Refreshes the monitor button's label from the processor's current selection,
+// counting only currently active electrodes (a deactivated one can no longer
+// be picked, so it shouldn't count toward "N selected" either).
+void BurstDetectorEditor::updateSingleBurstMonitorButtonText()
+{
+    auto processor = static_cast<BurstDetector*>(getProcessor());
+    DataStream* stream = processor->getDataStream(getCurrentStream());
+
+    int monitoredCount = 0;
+
+    if (stream != nullptr)
+    {
+        for (auto chan : stream->getSpikeChannels())
+        {
+            if (processor->isActive(chan) && processor->isSingleBurstMonitored(chan))
+                ++monitoredCount;
+        }
+    }
+
+    singleBurstMonitorButton->setButtonText(monitoredCount == 0 ? "None" : (String(monitoredCount) + " selected"));
+}
+
+// Opens a multi-select popup listing every currently active electrode, ticked
+// according to its current single-burst-monitor state. Toggling an item
+// reopens the popup (the standard JUCE idiom for a "stays open" checklist
+// menu) so more than one electrode can be selected in one interaction.
+void BurstDetectorEditor::showSingleBurstMonitorMenu()
+{
+    auto processor = static_cast<BurstDetector*>(getProcessor());
+    DataStream* stream = processor->getDataStream(getCurrentStream());
+
+    if (stream == nullptr)
+        return;
+
+    // Only active electrodes are offered - an inactive one never produces a
+    // burst to monitor in the first place.
+    Array<SpikeChannel*> activeChannels;
+
+    for (auto chan : stream->getSpikeChannels())
+    {
+        if (processor->isActive(chan))
+            activeChannels.add(chan);
+    }
+
+    PopupMenu menu;
+
+    if (activeChannels.isEmpty())
+    {
+        menu.addItem(1, "No active electrodes", false);
+    }
+    else
+    {
+        for (int i = 0; i < activeChannels.size(); ++i)
+        {
+            auto* chan = activeChannels.getUnchecked(i);
+            const String text = electrodePrefix(chan->getChannelType()) + String(chan->getLocalIndex() + 1);
+
+            menu.addItem(i + 1, text, true, processor->isSingleBurstMonitored(chan));
+        }
+    }
+
+    // The callback runs later, asynchronously - guard against the editor (and
+    // therefore the processor) having been removed in the meantime.
+    Component::SafePointer<BurstDetectorEditor> safeThis(this);
+
+    menu.showMenuAsync(PopupMenu::Options().withTargetComponent(singleBurstMonitorButton.get()),
+        [safeThis, activeChannels](int result)
+        {
+            if (safeThis == nullptr || result <= 0 || result > activeChannels.size())
+                return; // dismissed with no selection, or the disabled placeholder
+
+            auto* proc = static_cast<BurstDetector*>(safeThis->getProcessor());
+            auto* chan = activeChannels.getUnchecked(result - 1);
+
+            proc->setSingleBurstMonitored(chan->getIdentifier(), ! proc->isSingleBurstMonitored(chan));
+
+            safeThis->updateSingleBurstMonitorButtonText();
+            safeThis->showSingleBurstMonitorMenu();
+        });
 }
