@@ -122,15 +122,26 @@ public:
     void setSpikeChannelEnabled (int index, bool enabled);
 
 private:
-	
+
 	ElectrodeStateButton* makeNewChannelButton (SpikeChannel* chan);
 	void layoutChannelButtons();
+
+    /** Opens the multi-select popup used to choose which active electrodes'
+        single-electrode bursts drive the "Single Line" TTL. */
+    void showSingleBurstMonitorMenu();
+
+    /** Refreshes the monitor button's text ("None" / "N selected") from the
+        processor's current selection, restricted to currently active electrodes. */
+    void updateSingleBurstMonitorButtonText();
 
     // UI elements
     ScopedPointer<Label> noInputChannelsLabel;
     ScopedPointer<ElectrodeViewport> spikeChannelViewport;
     ScopedPointer<Component> spikeChannelCanvas;
     OwnedArray<ElectrodeStateButton> spikeChannelButtons;
+
+    ScopedPointer<Label> singleBurstMonitorLabel;
+    ScopedPointer<TextButton> singleBurstMonitorButton;
 
     // constants
     static const int BUTTON_WIDTH = 27;

@@ -118,6 +118,14 @@ public:
 
     int getNumActiveElectrodes() const;
 
+    /** Returns whether a channel is selected to drive the single-electrode
+        ("Single Line") TTL output. Independent from isActive(): a channel can
+        be active for detection without being monitored for this output. */
+    bool isSingleBurstMonitored(const SpikeChannel* chan) const;
+
+    /** Selects (or deselects) a channel for single-electrode TTL output. */
+    void setSingleBurstMonitored(const String& identifier, bool monitored);
+
     Array<SpikeChannel*> spikeChannels; // stores pointers to all spike channels in the system
     std::map<String, bool> spikeChannelActive; //stores the active state of each spike channel in the system
 
@@ -193,8 +201,10 @@ private:
     /** Prunes old burst intervals so network overlap checks stay bounded. */
     void pruneOldBursts(uint16 streamId, int64 newestSample);
 
-    /** Emits a single-electrode burst TTL and forwards the interval to the network detector. */
+    /** Emits a single-electrode burst TTL (if this electrode is monitored) and
+        forwards the interval to the network detector. */
     void emitSingleElectrodeBurst(const ElectrodeKey& electrode,
+                                  const String& identifier,
                                   const ElectrodeState& state,
                                   int64 triggerSample);
 
@@ -203,7 +213,6 @@ private:
 
     /** Per-stream TTL output settings. These parameters are STREAM_SCOPE, so they
         are read from the owning stream rather than cached in a single member. */
-    bool isSingleBurstEnabled(uint16 streamId) const;
     int singleBurstLineForStream(uint16 streamId) const;
     int networkBurstLineForStream(uint16 streamId) const;
 
@@ -229,10 +238,15 @@ private:
     std::map<uint16, int64> lastSingleTtlSample;
     std::map<uint16, int64> lastNetworkTtlSample;
 
-    /** True while a network burst is ongoing for a stream, so multiple
-        contributing single-electrode bursts don't each re-fire the
-        network TTL - only the onset of a new episode does. */
-    std::map<uint16, bool> networkBurstActive;
+    /** End sample of the most recently reported network-burst overlap window,
+        per stream. A call is treated as a continuation of the same episode (and
+        must not re-fire the TTL) while its overlap window still starts at or
+        before this sample; once a window starts strictly after it, that's a new
+        episode. This can't be a plain "episode active" boolean latch: when
+        min_electrodes == 1 a single electrode's own burst always satisfies the
+        threshold by itself, so the overlap count can never dip below threshold
+        between episodes to clear such a latch. */
+    std::map<uint16, int64> networkEpisodeEndSample;
 
     /** Highest block-start sample number seen so far for each stream. Used
         to detect a looping/restarted data source. */
@@ -256,6 +270,12 @@ private:
     /** Per-electrode burst candidates and recent completed bursts. */
     std::map<ElectrodeKey, ElectrodeState> electrodeStates;
     std::map<uint16, std::deque<DetectedBurst>> recentBursts;
+
+    /** Per-electrode selection (keyed by spike-channel identifier, same key space
+        as spikeChannelActive) of which channels' single-electrode bursts drive
+        the "Single Line" TTL. Not a Parameter - default false ("None selected"),
+        persisted via save/loadCustomParametersToXml() alongside spikeChannelActive. */
+    std::map<String, bool> singleBurstMonitored;
 
     /** Reused across calls to addDetectedBurst() to avoid allocating a fresh
         container on the audio thread every time a burst is reported. */
