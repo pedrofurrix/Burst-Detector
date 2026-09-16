@@ -8,7 +8,7 @@ The Burst Detector plugin detects both **single-electrode bursts** and **network
 
 This plugin aims to extend the applicability of the Open Ephys GUI to **in vitro electrophysiology**, providing an online burst detector suitable for microelectrode array (MEA) recordings.
 
-![open-ephys](Resources/open_ephys_burst_detector.png)
+![open-ephys](Resources/open_ephys_burst_detector_2.png)
 
 ## Usage
 
@@ -39,7 +39,7 @@ This plugin aims to extend the applicability of the Open Ephys GUI to **in vitro
 
 9. `NETWORK_LINE` controls the TTL line of the network burst trigger (default = 1).
 
-10. `SINGLE_TTL` (bool) controls whether to send TTL events for single-channel bursts (default = False).
+10. `SINGLE_BURST` (selector) controls what channels to detect and trigger single bursts for (default = None).
 
 
 ![open-ephys](Resources/plugin_schematic.png)

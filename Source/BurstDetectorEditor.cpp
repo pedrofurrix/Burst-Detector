@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /*
 Burst Detector Plugin was developed by:
 Pedro Félix Alves (pedrofalves@i3s.up.pt)
-Paulo Aguiar
+Paulo Aguiar (pauloaguiar@i3s.up.pt)
 Neuroengineering and Computational Neuroscience Lab
 i3S - Institute for Research and Innovation in Health
 University of Porto, Portugal
@@ -49,6 +49,7 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
     addAndMakeVisible (noInputChannelsLabel);
 
     // spike channels
+    // component->setBounds(x, y, width, height);
     spikeChannelViewport = new ElectrodeViewport();
     spikeChannelViewport->setScrollBarsShown (true, false, false, false);
     spikeChannelViewport->setBounds (10, 30, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
@@ -59,7 +60,6 @@ BurstDetectorEditor::BurstDetectorEditor(GenericProcessor* parentNode)
 
     // Multi-select popup for choosing which active electrodes' single-electrode
     // bursts drive the "Single Line" TTL (replaces a blanket per-stream toggle).
-    // component->setBounds(x, y, width, height);
     singleBurstMonitorLabel = new Label ("SingleBurstMonitorLabel", "Single Burst");
     singleBurstMonitorLabel->setFont (Font (11.0f));
     singleBurstMonitorLabel->setJustificationType (Justification::centred);
