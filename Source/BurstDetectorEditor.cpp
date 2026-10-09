@@ -22,8 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
 Burst Detector Plugin was developed by:
-Pedro Félix Alves (pedrofalves@i3s.up.pt)
-Paulo Aguiar
+Pedro Félix Alves 
+Paulo Aguiar (pauloaguiar@i3s.up.pt)
 Neuroengineering and Computational Neuroscience Lab
 i3S - Institute for Research and Innovation in Health
 University of Porto, Portugal

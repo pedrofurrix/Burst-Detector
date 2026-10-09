@@ -20,6 +20,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+Burst Detector Plugin was developed by:
+Pedro Félix Alves 
+Paulo Aguiar (pauloaguiar@i3s.up.pt)
+Neuroengineering and Computational Neuroscience Lab
+i3S - Institute for Research and Innovation in Health
+University of Porto, Portugal
+Contact email: pauloaguiar@i3s.up.pt
+*/
+
 
 #include "BurstDetector.h"
 
