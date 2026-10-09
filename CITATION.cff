@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use this plugin in your work, please cite it using the metadata below."
+type: software
+title: "Burst Detector: a real-time network burst detection plugin for the Open Ephys GUI"
+abstract: >-
+  Open Ephys GUI plugin for real-time detection of single-channel and network
+  bursts in extracellular recordings, based on the maximum interval method
+  (Cotterill et al., 2016). Each detected network burst triggers a TTL output,
+  enabling closed-loop, state-dependent stimulation (e.g. optogenetic burst
+  termination) in in vitro MEA experiments.
+authors:
+  # TODO: add every author who wrote code, in agreed order. ORCID is optional.
+  - family-names: "TODO-FAMILY-NAME"
+    given-names: "TODO-GIVEN-NAMES"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+    affiliation: "TODO-INSTITUTION"
+repository-code: "https://github.com/pedrofurrix/Burst-Detector"
+license: GPL-3.0-or-later
+version: "TODO-VERSION (e.g. 1.0.0, must match the tagged release used in the paper)"
+date-released: "TODO-YYYY-MM-DD"
+# TODO: after the first Zenodo release, add the version DOI:
+# doi: "10.5281/zenodo.XXXXXXX"
+keywords:
+  - Open Ephys
+  - burst detection
+  - closed-loop
+  - microelectrode array
+  - electrophysiology
+  - optogenetics
+references:
+  - type: article
+    authors:
+      - family-names: "Cotterill"
+        given-names: "Ellese"
+    title: "A comparison of computational methods for detecting bursts in neuronal spike trains and their application to human stem cell-derived neuronal networks"
+    journal: "Journal of Neurophysiology"
+    year: 2016
+    # TODO: verify the full author list, volume, pages and DOI before release.
+# TODO: once the paper is out, add it so GitHub offers both citations:
+# preferred-citation:
+#   type: article
+#   title: "..."
+#   authors: [...]
+#   journal: "..."
+#   year: 2026
+#   doi: "..."
